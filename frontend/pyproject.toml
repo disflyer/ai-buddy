@@ -1,0 +1,87 @@
+[project]
+name = "ai-buddy-frontend"
+version = "0.1.0"
+description = "小小花AI客户端"
+authors = [
+    {name = "Alan Fang", email = "disflyer123@gmail.com"},
+]
+dependencies = [
+    "applescript==2021.2.9",
+    "certifi==2025.1.31",
+    "cffi==1.17.1",
+    "charset-normalizer==3.4.1",
+    "colorama==0.4.6",
+    "comtypes==1.4.6",
+    "cryptography==44.0.1",
+    "idna==3.10",
+    "numpy==2.0.2",
+    "opuslib==3.0.1",
+    "paho-mqtt==2.1.0",
+    "psutil==7.0.0",
+    "PyAudio==0.2.14",
+    "pycaw==20240210",
+    "pycparser==2.22",
+    "pynput==1.8.0",
+    "pyperclip==1.9.0",
+    "pypinyin==0.53.0",
+    "requests==2.32.3",
+    "scipy",
+    "six==1.17.0",
+    "srt==3.5.3",
+    "tqdm==4.67.1",
+    "urllib3==2.3.0",
+    "vosk==0.3.44",
+    "webrtcvad-wheels==2.0.14",
+    "websockets==11.0.3",
+]
+requires-python = "==3.11.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "isort>=5.0.0",
+    "flake8>=6.0.0",
+]
+
+[project.scripts]
+ai-buddy = "main:main"
+
+[tool.pdm]
+distribution = false
+package-dir = "."
+source-includes = ["src/**/*.py"]
+
+[tool.pdm.dev-dependencies]
+test = [
+    "pytest>=7.0.0",
+]
+lint = [
+    "black>=23.0.0",
+    "isort>=5.0.0",
+    "flake8>=6.0.0",
+]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.scripts]
+# 启动应用程序
+start = "python main.py"
+# 确保脚本目录存在
+ensure-scripts-dir = {shell = "mkdir -p ./scripts"}
+
+# 配置 Homebrew 使用 pyenv 的 Python
+fix-brew-python = {composite = ["pdm run ensure-scripts-dir", "bash ./scripts/fix_brew_python.sh"]}
+
+# 修复 tkinter 问题
+fix-tkinter = {composite = ["pdm run ensure-scripts-dir", "bash ./scripts/fix_tkinter.sh"]}
+
+# 修复 opuslib_next 库路径问题
+fix-opus = {composite = ["pdm run ensure-scripts-dir", "bash ./scripts/fix_opus.sh"]}
+
+# 一键修复 Python 环境和库路径问题
+fix-all = {composite = ["pdm run fix-brew-python", "pdm run fix-tkinter", "pdm run fix-opus"]}

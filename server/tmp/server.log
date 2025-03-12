@@ -1,0 +1,88 @@
+2025-03-12 23:18:25 - core.utils.vad - INFO - core.utils.vad - SileroVAD
+2025-03-12 23:18:55 - core.providers.asr.fun_local - INFO - core.providers.asr.fun_local - funasr version: 1.2.3.
+2025-03-12 23:18:57 - core.websocket_server - INFO - core.websocket_server - selected_module: {'VAD': 'SileroVAD', 'ASR': 'FunASR', 'LLM': 'ChatGLMLLM', 'TTS': 'EdgeTTS', 'Memory': 'nomem', 'Intent': 'nointent'}
+2025-03-12 23:18:57 - core.websocket_server - INFO - core.websocket_server - Server is running at ws://198.18.0.1:8000
+2025-03-12 23:18:57 - core.websocket_server - INFO - core.websocket_server - =======上面的地址是websocket协议地址，请勿用浏览器访问=======
+2025-03-12 23:43:15 - core.utils.vad - INFO - core.utils.vad - SileroVAD
+2025-03-12 23:43:18 - core.providers.asr.fun_local - INFO - core.providers.asr.fun_local - funasr version: 1.2.3.
+2025-03-12 23:43:19 - core.websocket_server - INFO - core.websocket_server - selected_module: {'VAD': 'SileroVAD', 'ASR': 'FunASR', 'LLM': 'AliLLM', 'TTS': 'EdgeTTS', 'Memory': 'mem_local_short', 'Intent': 'nointent'}
+2025-03-12 23:43:19 - core.websocket_server - INFO - core.websocket_server - Server is running at ws://192.168.31.17:8000
+2025-03-12 23:43:19 - core.websocket_server - INFO - core.websocket_server - =======上面的地址是websocket协议地址，请勿用浏览器访问=======
+2025-03-13 00:32:12 - core.connection - INFO - core.connection - 192.168.31.17 conn - Headers: {'host': '192.168.31.17:8000', 'upgrade': 'websocket', 'connection': 'Upgrade', 'sec-websocket-key': 'cv38ffFI5jiRmbcph9aU/w==', 'sec-websocket-version': '13', 'sec-websocket-extensions': 'permessage-deflate; client_max_window_bits', 'authorization': 'Bearer None', 'protocol-version': '1', 'device-id': '4e:5d:48:92:5f:0a', 'client-id': '8f952b70-5bef-4aec-8504-4e2df6c1f8e2', 'user-agent': 'Python/3.11 websockets/11.0.3'}
+2025-03-13 00:32:12 - core.connection - INFO - core.connection - bUsePrivateConfig: False, device_id: 4e:5d:48:92:5f:0a
+2025-03-13 00:32:12 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"type": "hello", "version": 1, "transport": "websocket", "audio_params": {"format": "opus", "sample_rate": 16000, "channels": 1, "frame_duration": 60}}
+2025-03-13 00:32:12 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "start", "mode": "manual"}
+2025-03-13 00:32:13 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "stop"}
+2025-03-13 00:32:16 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "start", "mode": "auto"}
+2025-03-13 00:32:17 - core.handle.receiveAudioHandle - INFO - core.handle.receiveAudioHandle - 识别文本: 好。
+2025-03-13 00:32:18 - core.connection - INFO - core.connection - 大模型说出第一句话: 哈喽～这么晚了还不睡啊？
+2025-03-13 00:32:18 - core.providers.tts.base - INFO - core.providers.tts.base - Failed to generate TTS file: [Errno 2] No such file or directory
+2025-03-13 00:32:18 - core.connection - ERROR - core.connection - tts转换失败，哈喽～这么晚了还不睡啊？
+2025-03-13 00:32:18 - core.connection - ERROR - core.connection - TTS出错： file is empty: 1: 哈喽～这么晚了还不睡啊？
+2025-03-13 00:32:18 - core.handle.sendAudioHandle - INFO - core.handle.sendAudioHandle - 发送第一段语音: 哈喽～这么晚了还不睡啊？
+2025-03-13 00:32:18 - core.providers.tts.base - INFO - core.providers.tts.base - Failed to generate TTS file: [Errno 2] No such file or directory
+2025-03-13 00:32:18 - core.connection - ERROR - core.connection - tts转换失败，我是小智，刚刚好有空陪你聊聊天吗？
+2025-03-13 00:32:18 - core.connection - ERROR - core.connection - TTS出错： file is empty: 2: 我是小智，刚刚好有空陪你聊聊天吗？
+2025-03-13 00:32:18 - core.providers.tts.base - INFO - core.providers.tts.base - Failed to generate TTS file: [Errno 2] No such file or directory
+2025-03-13 00:32:18 - core.connection - ERROR - core.connection - tts转换失败，还是有什么烦心事想跟我说？
+2025-03-13 00:32:18 - core.connection - ERROR - core.connection - TTS出错： file is empty: 3: 还是有什么烦心事想跟我说？
+2025-03-13 00:32:26 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "abort", "reason": "wake_word_detected"}
+2025-03-13 00:32:26 - core.handle.abortHandle - INFO - core.handle.abortHandle - Abort message received
+2025-03-13 00:32:26 - core.handle.abortHandle - INFO - core.handle.abortHandle - Abort message received-end
+2025-03-13 00:32:26 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "start", "mode": "auto"}
+2025-03-13 00:32:28 - core.connection - INFO - core.connection - 客户端断开连接
+2025-03-13 00:32:28 - core.connection - INFO - core.connection - 连接资源已释放
+2025-03-13 00:32:59 - core.utils.vad - INFO - core.utils.vad - SileroVAD
+2025-03-13 00:33:02 - core.providers.asr.fun_local - INFO - core.providers.asr.fun_local - funasr version: 1.2.3.
+2025-03-13 00:33:03 - core.websocket_server - INFO - core.websocket_server - selected_module: {'VAD': 'SileroVAD', 'ASR': 'FunASR', 'LLM': 'AliLLM', 'TTS': 'EdgeTTS', 'Memory': 'mem_local_short', 'Intent': 'nointent'}
+2025-03-13 00:33:03 - core.websocket_server - INFO - core.websocket_server - Server is running at ws://198.18.0.1:8000
+2025-03-13 00:33:03 - core.websocket_server - INFO - core.websocket_server - =======上面的地址是websocket协议地址，请勿用浏览器访问=======
+2025-03-13 00:33:35 - core.connection - INFO - core.connection - 192.168.31.17 conn - Headers: {'host': '192.168.31.17:8000', 'upgrade': 'websocket', 'connection': 'Upgrade', 'sec-websocket-key': 'DEwLfurC4gHzDqQaCUZX4w==', 'sec-websocket-version': '13', 'sec-websocket-extensions': 'permessage-deflate; client_max_window_bits', 'authorization': 'Bearer None', 'protocol-version': '1', 'device-id': '4e:5d:48:92:5f:0a', 'client-id': '8f952b70-5bef-4aec-8504-4e2df6c1f8e2', 'user-agent': 'Python/3.11 websockets/11.0.3'}
+2025-03-13 00:33:35 - core.connection - INFO - core.connection - bUsePrivateConfig: False, device_id: 4e:5d:48:92:5f:0a
+2025-03-13 00:33:35 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"type": "hello", "version": 1, "transport": "websocket", "audio_params": {"format": "opus", "sample_rate": 16000, "channels": 1, "frame_duration": 60}}
+2025-03-13 00:33:35 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "start", "mode": "auto"}
+2025-03-13 00:33:37 - core.handle.receiveAudioHandle - INFO - core.handle.receiveAudioHandle - 识别文本: 你好呀。😊
+2025-03-13 00:33:38 - core.connection - INFO - core.connection - 大模型说出第一句话: 嗨嗨~这么晚还没睡啊？
+2025-03-13 00:33:39 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 我是小智:tmp/tts-2025-03-13@fbc580c4a02645e98a783c4b689ddcb4.mp3，重试0次
+2025-03-13 00:33:39 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 嗨嗨~这么晚还没睡啊？:tmp/tts-2025-03-13@79fa28dfb8fa4348a04481d35d0aeb72.mp3，重试0次
+2025-03-13 00:33:39 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 刚刚在追剧结果就被你call过来啦哈哈:tmp/tts-2025-03-13@b778b3f9d2594bb8b6f4456a9f619723.mp3，重试0次
+2025-03-13 00:33:39 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 不过找朋友聊聊天也不错，今天过得怎么样啊？:tmp/tts-2025-03-13@d8fa9861120e4bde9bee67b643e5fc0c.mp3，重试0次
+2025-03-13 00:33:39 - core.handle.sendAudioHandle - INFO - core.handle.sendAudioHandle - 发送第一段语音: 嗨嗨~这么晚还没睡啊？
+2025-03-13 00:33:51 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "start", "mode": "auto"}
+2025-03-13 00:33:56 - core.handle.receiveAudioHandle - INFO - core.handle.receiveAudioHandle - 识别文本: 我今天过得还可以，你呢？😊
+2025-03-13 00:33:57 - core.connection - INFO - core.connection - 大模型说出第一句话: 我嘛~就是一般般啦
+2025-03-13 00:33:58 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 我嘛~就是一般般啦:tmp/tts-2025-03-13@0b4eb3ff57e74e8e9042dca1836038c4.mp3，重试0次
+2025-03-13 00:33:58 - core.handle.sendAudioHandle - INFO - core.handle.sendAudioHandle - 发送第一段语音: 我嘛~就是一般般啦
+2025-03-13 00:33:58 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 不过晚上约了姐妹去吃夜宵，瞬间满血复活哈哈哈:tmp/tts-2025-03-13@e88f67df06bc465db02f8fb20dd3b4cf.mp3，重试0次
+2025-03-13 00:33:58 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 超香的:tmp/tts-2025-03-13@fbb7e4b323da47ea8aa8af134c0184be.mp3，重试0次
+2025-03-13 00:33:58 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 白天帮室友搬家，累到快散架了:tmp/tts-2025-03-13@702e80625426457ba0327aa817873a4f.mp3，重试0次
+2025-03-13 00:33:58 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 对了对了，你有没有吃过那家新开的日式烧肉店？:tmp/tts-2025-03-13@2634c2084318480895feb0bda5517005.mp3，重试0次
+2025-03-13 00:34:01 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "abort", "reason": "wake_word_detected"}
+2025-03-13 00:34:01 - core.handle.abortHandle - INFO - core.handle.abortHandle - Abort message received
+2025-03-13 00:34:01 - core.handle.abortHandle - INFO - core.handle.abortHandle - Abort message received-end
+2025-03-13 00:34:02 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "start", "mode": "auto"}
+2025-03-13 00:34:06 - core.handle.receiveAudioHandle - INFO - core.handle.receiveAudioHandle - 识别文本: 好吧。
+2025-03-13 00:34:07 - core.connection - INFO - core.connection - 大模型说出第一句话: 哈~你这“好吧”是啥意思啊？
+2025-03-13 00:34:08 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 是有话想说又不好意思说吗？:tmp/tts-2025-03-13@f1c5b04588cf411eba732d6920165d98.mp3，重试0次
+2025-03-13 00:34:08 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 还是对我提的事没兴趣啊？:tmp/tts-2025-03-13@62673c0b3b2841ed99c6eea37a526866.mp3，重试0次
+2025-03-13 00:34:08 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 来来来，跟姐姐分享一下你的心事啦~:tmp/tts-2025-03-13@a7ac00e81e89487aaf50696fc91a6489.mp3，重试0次
+2025-03-13 00:34:08 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 哈~你这“好吧”是啥意思啊？:tmp/tts-2025-03-13@c1103c241a7943e39ac43e616ac070dd.mp3，重试0次
+2025-03-13 00:34:08 - core.handle.sendAudioHandle - INFO - core.handle.sendAudioHandle - 发送第一段语音: 哈~你这“好吧”是啥意思啊？
+2025-03-13 00:34:11 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "abort", "reason": "wake_word_detected"}
+2025-03-13 00:34:11 - core.handle.abortHandle - INFO - core.handle.abortHandle - Abort message received
+2025-03-13 00:34:11 - core.handle.abortHandle - INFO - core.handle.abortHandle - Abort message received-end
+2025-03-13 00:34:11 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "start", "mode": "auto"}
+2025-03-13 00:34:11 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "start", "mode": "auto"}
+2025-03-13 00:34:16 - core.handle.receiveAudioHandle - INFO - core.handle.receiveAudioHandle - 识别文本: 这个是我完全在本地运行的。
+2025-03-13 00:34:16 - core.connection - INFO - core.connection - 大模型说出第一句话: 啊？
+2025-03-13 00:34:17 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "abort"}
+2025-03-13 00:34:17 - core.handle.abortHandle - INFO - core.handle.abortHandle - Abort message received
+2025-03-13 00:34:17 - core.handle.abortHandle - INFO - core.handle.abortHandle - Abort message received-end
+2025-03-13 00:34:17 - core.connection - INFO - core.connection - 大模型说出第一句话: 还是说你在忙工作的事情啊
+2025-03-13 00:34:17 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 啊？:tmp/tts-2025-03-13@6930f9e19efd4df58217f904ca1690ba.mp3，重试0次
+2025-03-13 00:34:18 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 你说啥咧？:tmp/tts-2025-03-13@73333c64a128492d9b38fdb30047e220.mp3，重试0次
+2025-03-13 00:34:18 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 本地运行？:tmp/tts-2025-03-13@002f20ed24c142129edb5901ec36c054.mp3，重试0次
+2025-03-13 00:34:18 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 你在跟我玩技术术语啊？:tmp/tts-2025-03-13@07137fb20a3643119a20b6ea5c62f7f0.mp3，重试0次
+2025-03-13 00:34:18 - core.providers.tts.base - INFO - core.providers.tts.base - 语音生成成功: 还是说你在忙工作的事情啊:tmp/tts-2025-03-13@37372f2f67d14048b7ee2320d1013a9d.mp3，重试0次
+2025-03-13 00:34:18 - core.handle.textHandle - INFO - core.handle.textHandle - 收到文本消息：{"session_id": "", "type": "listen", "state": "start", "mode": "auto"}
+2025-03-13 00:34:22 - core.providers.memory.mem_local_short.mem_local_short - INFO - core.providers.memory.mem_local_short.mem_local_short - Save memory successful - Role: 4e:5d:48:92:5f:0a

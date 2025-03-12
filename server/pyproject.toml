@@ -1,0 +1,89 @@
+[project]
+name = "ai_buddy"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Alan Fang", email = "disflyer123@gmail.com"},
+]
+dependencies = [
+    "pyyml==0.0.2",
+    "torch==2.2.2",
+    "silero-vad==5.1.2",
+    "websockets==14.2",
+    "opuslib-next==1.1.2",
+    "numpy==1.26.4",
+    "pydub==0.25.1",
+    "funasr==1.2.3",
+    "torchaudio==2.2.2",
+    "openai==1.61.0",
+    "google-generativeai==0.8.4",
+    "edge-tts==7.0.0",
+    "httpx==0.27.2",
+    "aiohttp==3.9.3",
+    "aiohttp-cors==0.7.0",
+    "ormsgpack==1.7.0",
+    "ruamel-yaml==0.18.10",
+    "loguru==0.7.3",
+    "requests==2.32.3",
+    "cozepy==0.12.0",
+    "mem0ai==0.1.62",
+]
+requires-python = "==3.11.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "black>=24.2.0",
+    "isort>=5.13.2",
+    "flake8>=7.0.0",
+    "pytest>=8.0.2",
+    "pytest-asyncio>=0.23.5",
+    "mypy>=1.8.0",
+]
+
+[tool.pdm.scripts]
+# 启动应用程序
+start = "python app.py"
+# 以调试模式启动应用程序
+debug = {cmd = "python app.py", env = {"DEBUG" = "1"}}
+# 运行性能测试
+perf-test = "python performance_tester.py"
+# 代码格式化
+format = {composite = ["black .", "isort ."]}
+# 代码检查
+lint = {composite = ["black --check .", "isort --check .", "flake8 ."]}
+# 类型检查
+typecheck = "mypy ."
+# 运行测试
+test = "pytest"
+# 运行测试并生成覆盖率报告
+test-cov = "pytest --cov=core --cov-report=html"
+# 安装所有依赖（包括开发依赖）
+setup = {cmd = "pdm install -G dev"}
+# 清理临时文件和缓存
+clean = {composite = ["rm -rf .pytest_cache", "rm -rf .mypy_cache", "rm -rf htmlcov", "rm -rf .coverage", "find . -type d -name __pycache__ -exec rm -rf {} +; true"]}
+# 安装系统依赖（macOS）
+setup-macos = {shell = "brew install opus ffmpeg portaudio"}
+# 安装系统依赖（Ubuntu/Debian）
+setup-ubuntu = {shell = "sudo apt-get update && sudo apt-get install -y libopus-dev ffmpeg libportaudio2 libportaudiocpp0 portaudio19-dev"}
+# 安装系统依赖（自动检测系统类型）
+setup-system = {shell = "if [ \"$(uname)\" = \"Darwin\" ]; then pdm run setup-macos; elif [ -f /etc/debian_version ]; then pdm run setup-ubuntu; else echo \"未知系统，请手动安装依赖\"; fi"}
+# 完整环境设置（系统依赖 + Python 依赖）
+setup-all = {composite = ["pdm run setup-system", "pdm run setup"]}
+
+# 确保脚本目录存在
+ensure-scripts-dir = {shell = "mkdir -p ./scripts"}
+
+# 配置 Homebrew 使用 pyenv 的 Python
+fix-brew-python = {composite = ["pdm run ensure-scripts-dir", "bash ./scripts/fix_brew_python.sh"]}
+
+# 修复 opuslib_next 库路径问题
+fix-opus = {composite = ["pdm run ensure-scripts-dir", "bash ./scripts/fix_opus.sh"]}
+
+# 一键修复 Python 环境和库路径问题
+fix-all = {composite = ["pdm run fix-brew-python", "pdm run fix-opus"]}
