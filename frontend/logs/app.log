@@ -172,3 +172,320 @@ AttributeError: 'NoneType' object has no attribute 'GuiDisplay'
 2025-03-13 00:34:20,327 - Application - INFO - 在空闲状态下启动唤醒词检测
 2025-03-13 00:34:20,327 - Application - INFO - 唤醒词功能已禁用，无法启动
 2025-03-13 00:34:20,496 - Application - INFO - 音频流已停止
+2025-03-13 00:38:38,972 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 00:38:39,165 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 00:38:39,165 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 00:38:39,263 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 00:38:39,263 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 00:38:39,263 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 00:38:39,366 - Application - INFO - 主循环已启动
+2025-03-13 00:38:39,509 - Application - INFO - 正在初始化应用程序...
+2025-03-13 00:38:39,632 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 00:38:39,632 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 00:38:39,632 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 00:38:39,632 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 00:38:39,632 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 00:38:39,632 - Application - INFO - 应用程序初始化完成
+2025-03-13 00:38:39,695 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 00:40:38,704 - Application - INFO - 状态变更: idle -> connecting
+2025-03-13 00:40:38,726 - WebsocketProtocol - ERROR - WebSocket连接失败: [Errno 61] Connect call failed ('192.168.31.17', 8000)
+2025-03-13 00:40:38,727 - Application - INFO - 状态变更: connecting -> idle
+2025-03-13 00:40:38,837 - Application - INFO - 检测到连接断开
+2025-03-13 00:40:38,838 - Application - WARNING - 警告: 错误, 打开音频通道失败
+2025-03-13 00:40:46,380 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 00:40:46,578 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 00:40:46,579 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 00:40:46,679 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 00:40:46,679 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 00:40:46,679 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 00:40:46,784 - Application - INFO - 主循环已启动
+2025-03-13 00:40:46,784 - Application - INFO - 正在初始化应用程序...
+2025-03-13 00:40:47,023 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 00:40:47,023 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 00:40:47,023 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 00:40:47,024 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 00:40:47,024 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 00:40:47,024 - Application - INFO - 应用程序初始化完成
+2025-03-13 00:40:47,053 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 00:41:34,173 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 00:41:34,360 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 00:41:34,361 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 00:41:34,468 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 00:41:34,468 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 00:41:34,468 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 00:41:34,572 - Application - INFO - 主循环已启动
+2025-03-13 00:41:34,696 - Application - INFO - 正在初始化应用程序...
+2025-03-13 00:41:34,827 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 00:41:34,827 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 00:41:34,827 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 00:41:34,827 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 00:41:34,827 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 00:41:34,827 - Application - INFO - 应用程序初始化完成
+2025-03-13 00:41:34,893 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 00:41:37,907 - Application - INFO - 状态变更: idle -> connecting
+2025-03-13 00:41:37,952 - Application - INFO - 音频通道已打开
+2025-03-13 00:41:37,952 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 00:41:37,952 - WebsocketProtocol - INFO - 已连接到WebSocket服务器
+2025-03-13 00:41:37,952 - Application - INFO - 状态变更: connecting -> listening
+2025-03-13 00:41:37,953 - Application - INFO - 音频通道已打开
+2025-03-13 00:41:37,953 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 00:41:38,235 - Application - INFO - 音频流已启动
+2025-03-13 00:41:38,704 - Application - INFO - 音频流已启动
+2025-03-13 00:41:40,737 - Application - INFO - >> 好呀，小小花
+2025-03-13 00:41:40,778 - Application - INFO - 状态变更: listening -> speaking
+2025-03-13 00:41:42,511 - Application - INFO - << 哈喽～深夜还在聊天，是在追剧还是干嘛呢？
+2025-03-13 00:41:46,981 - Application - INFO - 中止语音输出，原因: none
+2025-03-13 00:41:46,982 - Application - INFO - 状态变更: speaking -> idle
+2025-03-13 00:41:47,027 - Application - INFO - << 我刚刚吃完日式烧肉，超满足的说
+2025-03-13 00:41:47,027 - Application - INFO - << （偷笑）你那边几点了？
+2025-03-13 00:41:56,404 - Application - INFO - 状态变更: idle -> connecting
+2025-03-13 00:41:56,404 - Application - INFO - 状态变更: connecting -> listening
+2025-03-13 00:41:59,873 - Application - INFO - >> 在开发软件啦
+2025-03-13 00:41:59,884 - Application - INFO - 状态变更: listening -> speaking
+2025-03-13 00:42:01,570 - Application - INFO - << 哇靠，这么拼啊
+2025-03-13 00:42:03,746 - Application - INFO - << 开发软件超累的耶，要不要休息一下喝杯咖啡放松一下？
+2025-03-13 00:42:08,982 - Application - INFO - << 我刚吃完烧肉就在想接下来的工作有点头大
+2025-03-13 00:42:13,617 - Application - INFO - << （歪头）你做的是什么类型的软件啊？
+2025-03-13 00:42:16,814 - Application - INFO - 状态变更: speaking -> listening
+2025-03-13 00:42:24,176 - Application - INFO - >> 我在做你这个软件
+2025-03-13 00:42:24,223 - Application - INFO - 状态变更: listening -> speaking
+2025-03-13 00:42:25,779 - Application - INFO - << 哦我的天
+2025-03-13 00:42:27,235 - Application - INFO - << 你在做我这个啊？
+2025-03-13 00:42:28,990 - Application - INFO - << （惊呼）那我要更小心一点说话了啦
+2025-03-13 00:42:32,426 - Application - INFO - << 不过既然我是你的作品，应该挺聪明的吧？
+2025-03-13 00:42:36,461 - Application - INFO - << 你觉得我表现得怎么样？
+2025-03-13 00:42:39,057 - Application - INFO - << 有哪里需要改进的吗？
+2025-03-13 00:42:41,231 - Application - INFO - << （期待地看着你）
+2025-03-13 00:42:43,072 - Application - INFO - 状态变更: speaking -> listening
+2025-03-13 00:43:38,902 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 00:43:39,111 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 00:43:39,112 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 00:43:39,220 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 00:43:39,220 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 00:43:39,220 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 00:43:39,326 - Application - INFO - 主循环已启动
+2025-03-13 00:43:39,448 - Application - INFO - 正在初始化应用程序...
+2025-03-13 00:43:39,570 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 00:43:39,570 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 00:43:39,571 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 00:43:39,571 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 00:43:39,571 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 00:43:39,571 - Application - INFO - 应用程序初始化完成
+2025-03-13 00:43:39,590 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 00:43:51,162 - Application - INFO - 状态变更: idle -> connecting
+2025-03-13 00:43:51,210 - Application - INFO - 音频通道已打开
+2025-03-13 00:43:51,210 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 00:43:51,210 - WebsocketProtocol - INFO - 已连接到WebSocket服务器
+2025-03-13 00:43:51,210 - Application - INFO - 状态变更: connecting -> listening
+2025-03-13 00:43:51,210 - Application - INFO - 音频通道已打开
+2025-03-13 00:43:51,211 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 00:43:51,499 - Application - INFO - 音频流已启动
+2025-03-13 00:43:51,967 - Application - INFO - 音频流已启动
+2025-03-13 00:43:54,387 - Application - INFO - >> 你是哪里人啊？
+2025-03-13 00:43:54,399 - Application - INFO - 状态变更: listening -> speaking
+2025-03-13 00:43:56,113 - Application - INFO - << 我是台北人啦，士林那边住好久了
+2025-03-13 00:43:59,728 - Application - INFO - << 你问这个干麻？
+2025-03-13 00:44:01,484 - Application - INFO - << 是在想怎么破冰吗？哈哈
+2025-03-13 00:44:05,038 - Application - INFO - << 我刚刚在吃宵夜，你要不要也来点什么？
+2025-03-13 00:44:08,713 - Application - INFO - << 我超爱士林夜市的胡椒饼
+2025-03-13 00:44:11,561 - Application - INFO - 状态变更: speaking -> listening
+2025-03-13 01:00:30,119 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 01:00:30,361 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 01:00:30,362 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 01:00:30,478 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:00:30,478 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:00:30,478 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 01:00:30,584 - Application - INFO - 主循环已启动
+2025-03-13 01:00:30,719 - Application - INFO - 正在初始化应用程序...
+2025-03-13 01:00:30,855 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 01:00:30,855 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 01:00:30,855 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:00:30,855 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:00:30,855 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 01:00:30,855 - Application - INFO - 应用程序初始化完成
+2025-03-13 01:00:30,930 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 01:00:43,307 - Application - INFO - 状态变更: idle -> connecting
+2025-03-13 01:00:43,354 - Application - INFO - 音频通道已打开
+2025-03-13 01:00:43,354 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:00:43,354 - WebsocketProtocol - INFO - 已连接到WebSocket服务器
+2025-03-13 01:00:43,354 - Application - INFO - 状态变更: connecting -> listening
+2025-03-13 01:00:43,355 - Application - INFO - 音频通道已打开
+2025-03-13 01:00:43,355 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:00:43,645 - Application - INFO - 音频流已启动
+2025-03-13 01:00:44,130 - Application - INFO - 音频流已启动
+2025-03-13 01:00:51,335 - Application - INFO - >> 我想知道东京和大阪哪个地方的地震更多
+2025-03-13 01:00:51,346 - Application - INFO - 状态变更: listening -> speaking
+2025-03-13 01:00:53,061 - Application - INFO - << 诶嘿，这个问题问得好怪哦
+2025-03-13 01:00:56,136 - Application - INFO - << 东京跟大阪都满会晃的啦，但大阪相对平静一点
+2025-03-13 01:01:00,891 - Application - INFO - << 不过地震这档事真的很随机，不能单纯比较两地次数啦
+2025-03-13 01:01:06,246 - Application - INFO - << 你是不是对关西关东特别有兴趣呀？
+2025-03-13 01:01:09,620 - Application - INFO - << 我之前去关西玩的时候，大阪朋友还笑我说东京地震算啥，完全不紧张呢
+2025-03-13 01:01:16,595 - Application - INFO - << 你是在担心地震吗？
+2025-03-13 01:01:18,830 - Application - INFO - << 还是只是好奇啊？
+2025-03-13 01:02:02,281 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 01:02:02,543 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 01:02:02,544 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 01:02:02,652 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:02:02,652 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:02:02,652 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 01:02:02,758 - Application - INFO - 主循环已启动
+2025-03-13 01:02:02,870 - Application - INFO - 正在初始化应用程序...
+2025-03-13 01:02:03,002 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 01:02:03,002 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 01:02:03,002 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:02:03,002 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:02:03,002 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 01:02:03,002 - Application - INFO - 应用程序初始化完成
+2025-03-13 01:02:03,073 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 01:02:07,027 - Application - INFO - 对话模式已切换为: 手动
+2025-03-13 01:02:08,294 - Application - INFO - 对话模式已切换为: 自动
+2025-03-13 01:02:09,749 - Application - INFO - 状态变更: idle -> connecting
+2025-03-13 01:02:09,784 - Application - INFO - 音频通道已打开
+2025-03-13 01:02:09,784 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:02:09,784 - WebsocketProtocol - INFO - 已连接到WebSocket服务器
+2025-03-13 01:02:09,784 - Application - INFO - 状态变更: connecting -> listening
+2025-03-13 01:02:09,785 - Application - INFO - 音频通道已打开
+2025-03-13 01:02:09,785 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:02:10,073 - Application - INFO - 音频流已启动
+2025-03-13 01:02:10,561 - Application - INFO - 音频流已启动
+2025-03-13 01:02:18,108 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 01:02:18,301 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 01:02:18,301 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 01:02:18,394 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:02:18,395 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:02:18,395 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 01:02:18,500 - Application - INFO - 主循环已启动
+2025-03-13 01:02:18,615 - Application - INFO - 正在初始化应用程序...
+2025-03-13 01:02:18,734 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 01:02:18,734 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 01:02:18,734 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:02:18,734 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:02:18,734 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 01:02:18,734 - Application - INFO - 应用程序初始化完成
+2025-03-13 01:02:18,766 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 01:02:25,712 - Application - INFO - 状态变更: idle -> connecting
+2025-03-13 01:02:25,756 - Application - INFO - 音频通道已打开
+2025-03-13 01:02:25,756 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:02:25,757 - WebsocketProtocol - INFO - 已连接到WebSocket服务器
+2025-03-13 01:02:25,757 - Application - INFO - 状态变更: connecting -> listening
+2025-03-13 01:02:25,757 - Application - INFO - 音频通道已打开
+2025-03-13 01:02:25,757 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:02:26,041 - Application - INFO - 音频流已启动
+2025-03-13 01:02:26,524 - Application - INFO - 音频流已启动
+2025-03-13 01:02:28,865 - Application - INFO - >> 你好呀
+2025-03-13 01:02:28,888 - Application - INFO - 状态变更: listening -> speaking
+2025-03-13 01:02:30,442 - Application - INFO - << 哈喽
+2025-03-13 01:02:31,657 - Application - INFO - << 这么晚了还没睡啊？
+2025-03-13 01:02:33,652 - Application - INFO - << 我正窝在士林的家里吃着胡椒饼呢，你要不要也来一个？
+2025-03-13 01:03:56,182 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 01:03:56,397 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 01:03:56,398 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 01:03:56,503 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:03:56,503 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:03:56,504 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 01:03:56,606 - Application - INFO - 主循环已启动
+2025-03-13 01:03:56,728 - Application - INFO - 正在初始化应用程序...
+2025-03-13 01:03:56,853 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 01:03:56,853 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 01:03:56,853 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:03:56,853 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:03:56,853 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 01:03:56,853 - Application - INFO - 应用程序初始化完成
+2025-03-13 01:03:56,907 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 01:04:07,598 - Application - INFO - 状态变更: idle -> connecting
+2025-03-13 01:04:07,642 - Application - INFO - 音频通道已打开
+2025-03-13 01:04:07,642 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:04:07,642 - WebsocketProtocol - INFO - 已连接到WebSocket服务器
+2025-03-13 01:04:07,642 - Application - INFO - 状态变更: connecting -> listening
+2025-03-13 01:04:07,643 - Application - INFO - 音频通道已打开
+2025-03-13 01:04:07,643 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:04:07,941 - Application - INFO - 音频流已启动
+2025-03-13 01:04:08,426 - Application - INFO - 音频流已启动
+2025-03-13 01:04:11,184 - Application - INFO - >> 你觉得你聪明吗？
+2025-03-13 01:04:11,214 - Application - INFO - 状态变更: listening -> speaking
+2025-03-13 01:04:12,887 - Application - INFO - << 诶嘿，我觉得还行啦
+2025-03-13 01:04:15,423 - Application - INFO - << 不过聪明不聪明的，我觉得最重要的是能帮上忙，对吧？
+2025-03-13 01:04:20,719 - Application - INFO - << 毕竟我也在学习中进步呢
+2025-03-13 01:04:23,374 - Application - INFO - << 你今天遇到什么有趣的事情了吗？
+2025-03-13 01:04:26,218 - Application - INFO - 状态变更: speaking -> listening
+2025-03-13 01:04:30,243 - Application - INFO - >> 没有啦
+2025-03-13 01:04:30,271 - Application - INFO - 状态变更: listening -> speaking
+2025-03-13 01:04:32,245 - Application - INFO - << 这样啊，那你想不想聊聊你最近在忙啥？
+2025-03-13 01:04:36,221 - Application - INFO - << 比如工作还是其他事情之类的？
+2025-03-13 01:04:39,416 - Application - INFO - 状态变更: speaking -> listening
+2025-03-13 01:06:53,130 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 01:06:53,331 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 01:06:53,332 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 01:06:53,439 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:06:53,439 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:06:53,439 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 01:06:53,540 - Application - INFO - 主循环已启动
+2025-03-13 01:06:53,664 - Application - INFO - 正在初始化应用程序...
+2025-03-13 01:06:53,788 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 01:06:53,789 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 01:06:53,789 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:06:53,789 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:06:53,789 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 01:06:53,789 - Application - INFO - 应用程序初始化完成
+2025-03-13 01:06:53,838 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 01:07:07,757 - Display - ERROR - 自动模式按钮回调执行失败: Application.toggle_chat_state() takes 1 positional argument but 2 were given
+2025-03-13 01:07:16,440 - Application - INFO - 对话模式已切换为: 手动
+2025-03-13 01:07:17,719 - Application - INFO - 对话模式已切换为: 自动
+2025-03-13 01:07:18,589 - Display - ERROR - 自动模式按钮回调执行失败: Application.toggle_chat_state() takes 1 positional argument but 2 were given
+2025-03-13 01:07:23,834 - Display - ERROR - 自动模式按钮回调执行失败: Application.toggle_chat_state() takes 1 positional argument but 2 were given
+2025-03-13 01:07:32,975 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 01:07:33,160 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 01:07:33,160 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 01:07:33,263 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:07:33,263 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:07:33,263 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 01:07:33,368 - Application - INFO - 主循环已启动
+2025-03-13 01:07:33,501 - Application - INFO - 正在初始化应用程序...
+2025-03-13 01:07:33,623 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 01:07:33,623 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 01:07:33,623 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:07:33,623 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:07:33,623 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 01:07:33,623 - Application - INFO - 应用程序初始化完成
+2025-03-13 01:07:33,673 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 01:07:37,787 - Display - ERROR - 自动模式按钮回调执行失败: Application.toggle_chat_state() takes 1 positional argument but 2 were given
+2025-03-13 01:07:54,762 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 01:07:54,964 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 01:07:54,965 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 01:07:55,060 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:07:55,060 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:07:55,060 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 01:07:55,162 - Application - INFO - 主循环已启动
+2025-03-13 01:07:55,289 - Application - INFO - 正在初始化应用程序...
+2025-03-13 01:07:55,405 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 01:07:55,406 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 01:07:55,406 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:07:55,406 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:07:55,406 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 01:07:55,406 - Application - INFO - 应用程序初始化完成
+2025-03-13 01:07:55,436 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 01:07:58,573 - Display - ERROR - 自动模式按钮回调执行失败: Application.toggle_chat_state() takes 1 positional argument but 2 were given
+2025-03-13 01:08:14,318 - root - INFO - 日志系统已初始化，日志文件: /Users/fangyuedong/workspace/github/ai-buddy/frontend/src/utils/../../logs/app.log
+2025-03-13 01:08:14,499 - ConfigManager - INFO - MQTT服务器信息已更新
+2025-03-13 01:08:14,499 - ConfigManager - INFO - MQTT信息已成功更新
+2025-03-13 01:08:14,616 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:08:14,617 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:08:14,617 - Main - INFO - 应用程序已启动，按Ctrl+C退出
+2025-03-13 01:08:14,722 - Application - INFO - 主循环已启动
+2025-03-13 01:08:14,722 - Application - INFO - 正在初始化应用程序...
+2025-03-13 01:08:14,959 - AudioCodec - INFO - 音频设备和编解码器初始化成功
+2025-03-13 01:08:14,959 - Application - INFO - 音频编解码器初始化成功
+2025-03-13 01:08:14,959 - Application - INFO - 唤醒词功能已禁用
+2025-03-13 01:08:14,959 - Application - INFO - 唤醒词检测器初始化成功
+2025-03-13 01:08:14,959 - Application - INFO - 唤醒词功能已禁用，无法启动
+2025-03-13 01:08:14,959 - Application - INFO - 应用程序初始化完成
+2025-03-13 01:08:14,989 - pynput.keyboard.Listener - WARNING - This process is not trusted! Input event monitoring will not be possible until it is added to accessibility clients.
+2025-03-13 01:08:19,724 - Application - INFO - 状态变更: idle -> connecting
+2025-03-13 01:08:19,760 - Application - INFO - 音频通道已打开
+2025-03-13 01:08:19,760 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:08:19,760 - WebsocketProtocol - INFO - 已连接到WebSocket服务器
+2025-03-13 01:08:19,760 - Application - INFO - 状态变更: connecting -> listening
+2025-03-13 01:08:19,760 - Application - INFO - 音频通道已打开
+2025-03-13 01:08:19,760 - WebsocketProtocol - INFO - 成功处理服务器 hello 消息
+2025-03-13 01:08:20,048 - Application - INFO - 音频流已启动
+2025-03-13 01:08:20,516 - Application - INFO - 音频流已启动
