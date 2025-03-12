@@ -20,7 +20,7 @@ class GuiDisplay(BaseDisplay):
         # 创建主窗口
         self.root = tk.Tk()
         self.root.title("小小花Ai语音控制")
-        self.root.geometry("300x350")  # 增加高度以容纳快捷键提示
+        self.root.geometry("750x350")  # 增加高度以容纳快捷键提示
 
         # 状态显示
         self.status_frame = ttk.Frame(self.root)
@@ -56,46 +56,39 @@ class GuiDisplay(BaseDisplay):
         self.btn_frame = ttk.Frame(self.root)
         self.btn_frame.pack(pady=20)
         
-        # 手动模式按钮 - 默认不显示
-        self.manual_btn = ttk.Button(self.btn_frame, text="按住说话")
-        self.manual_btn.bind("<ButtonPress-1>", self._on_manual_button_press)
-        self.manual_btn.bind("<ButtonRelease-1>", self._on_manual_button_release)
-        # 不立即pack，因为默认是自动模式
-        
-        # 打断按钮 - 放在中间
+        # 打断按钮 - 放在左边
         self.abort_btn = ttk.Button(self.btn_frame, text="打断", command=self._on_abort_button_click)
         self.abort_btn.pack(side=tk.LEFT, padx=10)
         
-        # 自动模式按钮 - 默认显示
+        # 自动模式按钮 - 放在中间
         self.auto_btn = ttk.Button(self.btn_frame, text="开始对话", command=self._on_auto_button_click)
-        self.auto_btn.pack(side=tk.LEFT, padx=10, before=self.abort_btn)  # 默认显示自动按钮
+        self.auto_btn.pack(side=tk.LEFT, padx=10)
         
-        # 模式切换按钮
-        self.mode_btn = ttk.Button(self.btn_frame, text="自动对话", command=self._on_mode_button_click)
-        self.mode_btn.pack(side=tk.LEFT, padx=10)
+        # 停止对话按钮 - 放在右边
+        self.stop_btn = ttk.Button(self.btn_frame, text="停止对话", command=self._on_stop_button_click)
+        self.stop_btn.pack(side=tk.LEFT, padx=10)
+        self.stop_btn.config(state="disabled")  # 初始状态为禁用
         
         # 添加快捷键提示
         self.shortcut_frame = ttk.Frame(self.root)
         self.shortcut_frame.pack(pady=5)
         self.shortcut_label = ttk.Label(
             self.shortcut_frame, 
-            text="快捷键: F3=打断 | F4=开始对话",
+            text="快捷键: F3=打断 | F4=开始/停止对话",
             font=("Arial", 8)
         )
         self.shortcut_label.pack()
         
-        # 对话模式标志 - 默认为自动模式
-        self.auto_mode = True
+        # 对话状态标志 - 默认为非对话状态
+        self.is_in_conversation = False
 
         # 回调函数
-        self.button_press_callback = None
-        self.button_release_callback = None
         self.status_update_callback = None
         self.text_update_callback = None
         self.emotion_update_callback = None
-        self.mode_callback = None
         self.auto_callback = None
         self.abort_callback = None
+        self.stop_callback = None
 
         # 更新队列
         self.update_queue = queue.Queue()
@@ -111,9 +104,6 @@ class GuiDisplay(BaseDisplay):
 
         self.keyboard_listener = None
         
-        # 确保界面初始状态为自动模式
-        self.update_mode_button_status("自动对话")
-
         # 键盘监听状态
         self.keyboard_listener_active = False
 
@@ -125,7 +115,8 @@ class GuiDisplay(BaseDisplay):
                       emotion_callback: Optional[Callable] = None,
                       mode_callback: Optional[Callable] = None,
                       auto_callback: Optional[Callable] = None,
-                      abort_callback: Optional[Callable] = None):
+                      abort_callback: Optional[Callable] = None,
+                      stop_callback: Optional[Callable] = None):
         """设置回调函数"""
         self.button_press_callback = press_callback
         self.button_release_callback = release_callback
@@ -135,6 +126,7 @@ class GuiDisplay(BaseDisplay):
         self.mode_callback = mode_callback
         self.auto_callback = auto_callback
         self.abort_callback = abort_callback
+        self.stop_callback = stop_callback
 
 
     def _process_updates(self):
@@ -152,35 +144,15 @@ class GuiDisplay(BaseDisplay):
             if self._running:
                 self.root.after(100, self._process_updates)
 
-    def _on_manual_button_press(self, event):
-        """手动模式按钮按下事件处理"""
-        try:
-            # 更新按钮文本为"松开以停止"
-            self.manual_btn.config(text="松开以停止")
-            
-            # 调用回调函数
-            if self.button_press_callback:
-                self.button_press_callback()
-        except Exception as e:
-            self.logger.error(f"按钮按下回调执行失败: {e}")
-
-    def _on_manual_button_release(self, event):
-        """手动模式按钮释放事件处理"""
-        try:
-            # 更新按钮文本为"按住说话"
-            self.manual_btn.config(text="按住说话")
-            
-            # 调用回调函数
-            if self.button_release_callback:
-                self.button_release_callback()
-        except Exception as e:
-            self.logger.error(f"按钮释放回调执行失败: {e}")
-            
     def _on_auto_button_click(self):
         """自动模式按钮点击事件处理"""
         try:
             # 更新按钮状态，提供视觉反馈
             self.auto_btn.config(text="对话中...", state="disabled")
+            self.stop_btn.config(state="normal")  # 启用停止按钮
+            
+            # 更新对话状态
+            self.is_in_conversation = True
             
             # 调用回调函数
             if self.auto_callback:
@@ -188,6 +160,8 @@ class GuiDisplay(BaseDisplay):
         except Exception as e:
             # 发生错误时恢复按钮状态
             self.auto_btn.config(text="开始对话", state="normal")
+            self.stop_btn.config(state="disabled")
+            self.is_in_conversation = False
             self.logger.error(f"自动模式按钮回调执行失败: {e}")
 
     def _on_abort_button_click(self):
@@ -206,45 +180,33 @@ class GuiDisplay(BaseDisplay):
             # 发生错误时恢复按钮状态
             self.abort_btn.config(text="打断", state="normal")
             self.logger.error(f"打断按钮回调执行失败: {e}")
-
-    def _on_mode_button_click(self):
-        """对话模式切换按钮点击事件"""
+            
+    def _on_stop_button_click(self):
+        """停止对话按钮点击事件处理"""
         try:
-            # 检查是否可以切换模式（通过回调函数询问应用程序当前状态）
-            if self.mode_callback:
-                # 如果回调函数返回False，表示当前不能切换模式
-                if not self.mode_callback(not self.auto_mode):
-                    return
-                    
-            # 切换模式
-            self.auto_mode = not self.auto_mode
+            # 更新按钮状态，提供视觉反馈
+            self.stop_btn.config(text="停止中...", state="disabled")
             
-            # 更新按钮显示
-            if self.auto_mode:
-                # 切换到自动模式
-                self.update_mode_button_status("自动对话")
-                
-                # 隐藏手动按钮，显示自动按钮
-                self.update_queue.put(lambda: self._switch_to_auto_mode())
-            else:
-                # 切换到手动模式
-                self.update_mode_button_status("手动对话")
-                
-                # 隐藏自动按钮，显示手动按钮
-                self.update_queue.put(lambda: self._switch_to_manual_mode())
-                
+            # 先执行打断功能
+            if self.abort_callback:
+                self.abort_callback()
+            
+            # 短暂延迟后恢复按钮状态
+            self.root.after(1000, lambda: self._reset_conversation_state())
+            
+            # 调用停止回调函数
+            if self.stop_callback:
+                self.stop_callback()
         except Exception as e:
-            self.logger.error(f"模式切换按钮回调执行失败: {e}")
+            # 发生错误时恢复按钮状态
+            self._reset_conversation_state()
+            self.logger.error(f"停止对话按钮回调执行失败: {e}")
             
-    def _switch_to_auto_mode(self):
-        """切换到自动模式的UI更新"""
-        self.manual_btn.pack_forget()  # 移除手动按钮
-        self.auto_btn.pack(side=tk.LEFT, padx=10, before=self.abort_btn)  # 显示自动按钮，放在打断按钮前面
-        
-    def _switch_to_manual_mode(self):
-        """切换到手动模式的UI更新"""
-        self.auto_btn.pack_forget()  # 移除自动按钮
-        self.manual_btn.pack(side=tk.LEFT, padx=10, before=self.abort_btn)  # 显示手动按钮，放在打断按钮前面
+    def _reset_conversation_state(self):
+        """重置对话状态"""
+        self.is_in_conversation = False
+        self.auto_btn.config(text="开始对话", state="normal")
+        self.stop_btn.config(text="停止对话", state="disabled")
 
     def update_status(self, status: str):
         """更新状态文本"""
@@ -308,19 +270,10 @@ class GuiDisplay(BaseDisplay):
         # 在主线程中运行主循环
         self.root.mainloop()
 
-    def update_mode_button_status(self, text: str):
-        """更新模式按钮状态"""
-        self.update_queue.put(lambda: self.mode_btn.config(text=text))
-
     def update_button_status(self, text: str):
         """更新按钮状态 - 保留此方法以满足抽象基类要求"""
-        # 根据当前模式更新相应的按钮
-        if self.auto_mode:
-            self.update_queue.put(lambda: self.auto_btn.config(text=text))
-        else:
-            # 在手动模式下，不通过此方法更新按钮文本
-            # 因为按钮文本由按下/释放事件直接控制
-            pass
+        # 直接更新自动对话按钮
+        self.update_queue.put(lambda: self.auto_btn.config(text=text))
 
     def _on_volume_change(self, value):
         """处理音量滑块变化，使用节流"""
@@ -339,13 +292,8 @@ class GuiDisplay(BaseDisplay):
         try:
             def on_press(key):
                 try:
-                    # F2 按键处理 - 按住说话（仅在手动模式下）
-                    if key == pynput_keyboard.Key.f2 and not self.auto_mode:
-                        if self.button_press_callback:
-                            self.button_press_callback()
-                            self.update_button_status("松开以停止")
                     # F3 按键处理 - 打断（在任何模式下都可用）
-                    elif key == pynput_keyboard.Key.f3:
+                    if key == pynput_keyboard.Key.f3:
                         # 更新按钮状态，提供视觉反馈
                         self.update_queue.put(lambda: self.abort_btn.config(text="打断中...", state="disabled"))
                         
@@ -357,33 +305,25 @@ class GuiDisplay(BaseDisplay):
                         
                         if self.abort_callback:
                             self.abort_callback()
-                    # F4 按键处理 - 自动对话（仅在自动模式下）
-                    elif key == pynput_keyboard.Key.f4 and self.auto_mode:
-                        # 更新按钮状态，提供视觉反馈
-                        self.update_queue.put(lambda: self.auto_btn.config(text="对话中...", state="disabled"))
-                        
-                        # 短暂延迟后恢复按钮状态
-                        self.update_queue.put(lambda: self.root.after(
-                            2000, 
-                            lambda: self.auto_btn.config(text="开始对话", state="normal")
-                        ))
-                        
-                        if self.auto_callback:
-                            self.auto_callback()
+                    # F4 按键处理 - 开始/停止对话
+                    elif key == pynput_keyboard.Key.f4:
+                        if not self.is_in_conversation:
+                            # 开始对话
+                            self.update_queue.put(lambda: self._on_auto_button_click())
+                        else:
+                            # 停止对话前先执行打断
+                            if self.abort_callback:
+                                self.abort_callback()
+                            # 然后停止对话
+                            self.update_queue.put(lambda: self._on_stop_button_click())
                 except Exception as e:
                     # 发生错误时恢复按钮状态
-                    self.update_queue.put(lambda: self.auto_btn.config(text="开始对话", state="normal"))
+                    self.update_queue.put(lambda: self._reset_conversation_state())
                     self.logger.error(f"键盘事件处理错误: {e}")
 
             def on_release(key):
-                try:
-                    # F2 释放处理
-                    if key == pynput_keyboard.Key.f2 and not self.auto_mode:
-                        if self.button_release_callback:
-                            self.button_release_callback()
-                            self.update_button_status("按住说话")
-                except Exception as e:
-                    self.logger.error(f"键盘事件处理错误: {e}")
+                # 不需要处理按键释放事件
+                pass
 
             self.keyboard_listener = pynput_keyboard.Listener(
                 on_press=on_press,
@@ -450,7 +390,7 @@ class GuiDisplay(BaseDisplay):
         
         # 更新快捷键提示标签，指示当前状态
         self.update_queue.put(lambda: self.shortcut_label.config(
-            text="快捷键: F2=说话 | F3=打断 | F4=开始对话 (仅窗口焦点时有效)",
+            text="快捷键: F3=打断 | F4=开始/停止对话 (仅窗口焦点时有效)",
             foreground="red"
         ))
 
@@ -464,36 +404,14 @@ class GuiDisplay(BaseDisplay):
         """设置 tkinter 键盘绑定作为备用方案"""
         self.logger.info("使用 tkinter 键盘绑定作为备用")
         
-        # 绑定 F2 键 - 按住说话（手动模式）
-        self.root.bind("<KeyPress-F2>", lambda event: self._on_f2_key_press() if not self.auto_mode else None)
-        self.root.bind("<KeyRelease-F2>", lambda event: self._on_f2_key_release() if not self.auto_mode else None)
-        
         # 绑定 F3 键 - 打断
         self.root.bind("<KeyPress-F3>", lambda event: self._on_f3_key_press())
         
-        # 绑定 F4 键 - 自动对话（自动模式）
-        self.root.bind("<KeyPress-F4>", lambda event: self._on_f4_key_press() if self.auto_mode else None)
+        # 绑定 F4 键 - 开始/停止对话
+        self.root.bind("<KeyPress-F4>", lambda event: self._on_f4_key_press())
         
         # 更新状态
         self.update_status("使用内置键盘监听")
-        
-    def _on_f2_key_press(self):
-        """F2 按键处理 - 通过 tkinter 绑定"""
-        try:
-            if self.button_press_callback:
-                self.button_press_callback()
-                self.manual_btn.config(text="松开以停止")
-        except Exception as e:
-            self.logger.error(f"F2 按键处理错误: {e}")
-            
-    def _on_f2_key_release(self):
-        """F2 释放处理 - 通过 tkinter 绑定"""
-        try:
-            if self.button_release_callback:
-                self.button_release_callback()
-                self.manual_btn.config(text="按住说话")
-        except Exception as e:
-            self.logger.error(f"F2 释放处理错误: {e}")
             
     def _on_f3_key_press(self):
         """F3 按键处理 - 通过 tkinter 绑定"""
@@ -515,18 +433,18 @@ class GuiDisplay(BaseDisplay):
     def _on_f4_key_press(self):
         """F4 按键处理 - 通过 tkinter 绑定"""
         try:
-            # 更新按钮状态，提供视觉反馈
-            self.auto_btn.config(text="对话中...", state="disabled")
-            
-            # 短暂延迟后恢复按钮状态
-            self.root.after(2000, lambda: self.auto_btn.config(text="开始对话", state="normal"))
-            
-            # 调用回调函数
-            if self.auto_callback:
-                self.auto_callback()
+            if not self.is_in_conversation:
+                # 开始对话
+                self._on_auto_button_click()
+            else:
+                # 停止对话前先执行打断
+                if self.abort_callback:
+                    self.abort_callback()
+                # 然后停止对话
+                self._on_stop_button_click()
         except Exception as e:
             # 发生错误时恢复按钮状态
-            self.auto_btn.config(text="开始对话", state="normal")
+            self._reset_conversation_state()
             self.logger.error(f"F4 按键处理错误: {e}")
 
     def update_auto_button_status(self, is_active: bool = False, text: Optional[str] = None):
@@ -536,12 +454,20 @@ class GuiDisplay(BaseDisplay):
             is_active: 是否处于活动状态，True表示对话中，False表示待命
             text: 可选的按钮文本，如果不提供则根据is_active自动设置
         """
+        # 更新对话状态标志
+        self.is_in_conversation = is_active
+        
         if text is None:
             text = "对话中..." if is_active else "开始对话"
             
-        state = "disabled" if is_active else "normal"
-        
-        self.update_queue.put(lambda: self.auto_btn.config(text=text, state=state))
+        if is_active:
+            # 进入对话状态
+            self.update_queue.put(lambda: self.auto_btn.config(text=text, state="disabled"))
+            self.update_queue.put(lambda: self.stop_btn.config(state="normal"))
+        else:
+            # 退出对话状态
+            self.update_queue.put(lambda: self.auto_btn.config(text=text, state="normal"))
+            self.update_queue.put(lambda: self.stop_btn.config(state="disabled"))
 
     def update_abort_button_status(self, is_active: bool = False, text: Optional[str] = None):
         """更新打断按钮状态
