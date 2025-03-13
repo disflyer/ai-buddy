@@ -56,13 +56,13 @@ class GuiDisplay(BaseDisplay):
         self.btn_frame = ttk.Frame(self.root)
         self.btn_frame.pack(pady=20)
         
-        # 打断按钮 - 放在左边
-        self.abort_btn = ttk.Button(self.btn_frame, text="打断", command=self._on_abort_button_click)
-        self.abort_btn.pack(side=tk.LEFT, padx=10)
-        
-        # 自动模式按钮 - 放在中间
+        # 自动模式按钮 - 放在左边
         self.auto_btn = ttk.Button(self.btn_frame, text="开始对话", command=self._on_auto_button_click)
         self.auto_btn.pack(side=tk.LEFT, padx=10)
+        
+        # 打断按钮 - 放在中间
+        self.abort_btn = ttk.Button(self.btn_frame, text="打断", command=self._on_abort_button_click)
+        self.abort_btn.pack(side=tk.LEFT, padx=10)
         
         # 停止对话按钮 - 放在右边
         self.stop_btn = ttk.Button(self.btn_frame, text="停止对话", command=self._on_stop_button_click)
@@ -193,7 +193,7 @@ class GuiDisplay(BaseDisplay):
             
             # 短暂延迟后恢复按钮状态
             self.root.after(1000, lambda: self._reset_conversation_state())
-            
+
             # 调用停止回调函数
             if self.stop_callback:
                 self.stop_callback()

@@ -15,7 +15,7 @@ except Exception as e:
 
 from src.protocols.mqtt_protocol import MqttProtocol
 from src.constants.constants import DeviceState, EventType, AudioConfig, AbortReason, ListeningMode
-from src.display import gui_display,cli_display
+from src.display import gui_display
 from src.protocols.websocket_protocol import WebsocketProtocol
 from src.utils.config_manager import ConfigManager
 
@@ -166,15 +166,6 @@ class Application:
             abort_callback=lambda: self.abort_speaking(AbortReason.WAKE_WORD_DETECTED)
         )
 
-    def _initialize_cli(self):
-        self.display = cli_display.CliDisplay()
-        self.display.set_callbacks(
-            auto_callback=self.toggle_chat_state,
-            abort_callback=lambda: self.abort_speaking(AbortReason.WAKE_WORD_DETECTED),
-            status_callback=self._get_status_text,
-            text_callback=self._get_current_text,
-            emotion_callback=self._get_current_emotion
-        )
 
     def set_protocol_type(self, protocol_type: str):
         """设置协议类型"""
@@ -184,10 +175,8 @@ class Application:
             self.protocol = WebsocketProtocol()
 
     def set_display_type(self, mode: str):
-        if mode == 'gui':
-            self._initialize_display()
-        else:
-            self._initialize_cli()
+        self._initialize_display()
+
 
     def _main_loop(self):
         """应用程序主循环"""
