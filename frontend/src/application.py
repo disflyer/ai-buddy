@@ -18,6 +18,7 @@ from src.constants.constants import DeviceState, EventType, AudioConfig, AbortRe
 from src.display import gui_display
 from src.protocols.websocket_protocol import WebsocketProtocol
 from src.utils.config_manager import ConfigManager
+from src.utils import throttle  # 导入节流装饰器
 
 # 配置日志
 logger = logging.getLogger("Application")
@@ -163,6 +164,7 @@ class Application:
             emotion_callback=self._get_current_emotion,
             mode_callback=self._on_mode_changed,
             auto_callback=self.toggle_chat_state,
+            stop_callback=self.stop_callback,
             abort_callback=lambda: self.abort_speaking(AbortReason.WAKE_WORD_DETECTED)
         )
 
@@ -397,7 +399,7 @@ class Application:
         emotion = data.get("emotion", "")
         if emotion:
             self.schedule(lambda: self.set_emotion(emotion))
-
+    
     async def _on_audio_channel_opened(self):
         """音频通道打开回调"""
         logger.info("音频通道已打开")
@@ -658,7 +660,7 @@ class Application:
 
     def toggle_chat_state(self):
         """切换聊天状态"""
-        self.wake_word_detector.pause()
+        # self.wake_word_detector.pause()
         self.schedule(self._toggle_chat_state_impl)
 
     def _toggle_chat_state_impl(self):
@@ -704,6 +706,19 @@ class Application:
 
         # 如果设备正在说话，停止当前说话
         elif self.device_state == DeviceState.SPEAKING:
+            self.abort_speaking(AbortReason.NONE)  # 中止说话
+
+        # 如果设备正在监听，关闭音频通道
+        elif self.device_state == DeviceState.LISTENING:
+            asyncio.run_coroutine_threadsafe(
+                self.protocol.close_audio_channel(),
+                self.loop
+            )
+
+    def stop_callback(self):
+        """停止回调"""
+        self.stop_listening()
+        if self.device_state == DeviceState.SPEAKING:
             self.abort_speaking(AbortReason.NONE)  # 中止说话
 
         # 如果设备正在监听，关闭音频通道

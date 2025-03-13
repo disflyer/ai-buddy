@@ -187,10 +187,6 @@ class GuiDisplay(BaseDisplay):
             # 更新按钮状态，提供视觉反馈
             self.stop_btn.config(text="停止中...", state="disabled")
             
-            # 先执行打断功能
-            if self.abort_callback:
-                self.abort_callback()
-            
             # 短暂延迟后恢复按钮状态
             self.root.after(1000, lambda: self._reset_conversation_state())
 
