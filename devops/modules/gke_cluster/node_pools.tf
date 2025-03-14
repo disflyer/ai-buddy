@@ -4,6 +4,7 @@ resource "google_container_node_pool" "primary_nodes" {
   location   = var.region
   cluster    = google_container_cluster.primary.name
   node_count = var.cluster_tier.min_node_count
+  version    = var.kubernetes_version
 
   autoscaling {
     min_node_count = var.cluster_tier.min_node_count
@@ -13,6 +14,11 @@ resource "google_container_node_pool" "primary_nodes" {
   management {
     auto_repair  = true
     auto_upgrade = true
+  }
+
+  upgrade_settings {
+    max_surge       = 1
+    max_unavailable = 0
   }
 
   node_config {
@@ -36,20 +42,28 @@ resource "google_container_node_pool" "primary_nodes" {
       }
     }
 
-    labels = {
-      env        = var.env
-      workload   = "general"
-    }
+    labels = merge({
+      env      = var.env
+      workload = "general"
+    }, var.cluster_tier.gpu_enabled ? {
+      "cloud.google.com/gke-accelerator" = replace(lower(var.cluster_tier.gpu_type), "-", "_")
+    } : {})
 
     # 只有在启用GPU时才添加污点
     dynamic "taint" {
       for_each = var.cluster_tier.gpu_enabled ? [1] : []
       content {
-        key    = "dedicated"
-        value  = "gpu"
+        key    = "nvidia.com/gpu"
+        value  = "present"
         effect = "NO_SCHEDULE"
       }
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      initial_node_count
+    ]
   }
 }
 
@@ -60,6 +74,7 @@ resource "google_container_node_pool" "prod_nodes" {
   location   = var.region
   cluster    = google_container_cluster.primary.name
   node_count = 2
+  version    = var.kubernetes_version
 
   autoscaling {
     min_node_count = 2
@@ -69,6 +84,11 @@ resource "google_container_node_pool" "prod_nodes" {
   management {
     auto_repair  = true
     auto_upgrade = true
+  }
+
+  upgrade_settings {
+    max_surge       = 1
+    max_unavailable = 0
   }
 
   node_config {
@@ -85,15 +105,21 @@ resource "google_container_node_pool" "prod_nodes" {
     preemptible     = false
 
     labels = {
-      env        = "prod"
-      workload   = "critical"
+      env      = "prod"
+      workload = "critical"
     }
 
     taint {
-      key    = "dedicated"
-      value  = "prod"
+      key    = "workload"
+      value  = "critical"
       effect = "NO_SCHEDULE"
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      initial_node_count
+    ]
   }
 }
 

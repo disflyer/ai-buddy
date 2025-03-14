@@ -84,3 +84,29 @@ variable "resource_labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "cluster_name" {
+  description = "GKE集群名称"
+  type        = string
+  default     = "ai-buddy-cluster"
+}
+
+variable "cluster_network_config" {
+  description = "集群网络配置"
+  type = object({
+    cluster_ipv4_cidr_block  = string
+    services_ipv4_cidr_block = string
+    master_ipv4_cidr_block   = string
+  })
+  default = {
+    cluster_ipv4_cidr_block  = "/14"
+    services_ipv4_cidr_block = "/20"
+    master_ipv4_cidr_block   = "172.16.0.0/28"
+  }
+}
+
+variable "kubernetes_version" {
+  description = "Kubernetes版本"
+  type        = string
+  default     = "1.27"  # 使用稳定版本
+}

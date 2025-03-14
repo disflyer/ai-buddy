@@ -36,9 +36,10 @@ locals {
 
 # 创建GKE集群
 resource "google_container_cluster" "primary" {
-  name               = "ai-buddy-cluster"
+  name               = var.cluster_name
   location           = var.region
   initial_node_count = 1
+  min_master_version = var.kubernetes_version
 
   network    = data.google_compute_network.vpc.name
   subnetwork = data.google_compute_subnetwork.subnet.name
@@ -50,7 +51,7 @@ resource "google_container_cluster" "primary" {
   private_cluster_config {
     enable_private_nodes    = true
     enable_private_endpoint = false
-    master_ipv4_cidr_block  = "172.16.0.0/28"
+    master_ipv4_cidr_block = var.cluster_network_config.master_ipv4_cidr_block
   }
 
   # 维护窗口
@@ -76,6 +77,16 @@ resource "google_container_cluster" "primary" {
       resource_type = "memory"
       minimum       = 2
       maximum       = var.env == "prod" ? 128 : 64
+    }
+
+    # 如果启用了GPU，添加GPU资源限制
+    dynamic "resource_limits" {
+      for_each = var.cluster_tier.gpu_enabled ? [1] : []
+      content {
+        resource_type = "nvidia-tesla-t4"  # 根据GPU类型调整
+        minimum       = 0
+        maximum       = var.env == "prod" ? 8 : 4
+      }
     }
     
     auto_provisioning_defaults {
@@ -115,8 +126,8 @@ resource "google_container_cluster" "primary" {
 
   # 配置IP分配策略
   ip_allocation_policy {
-    cluster_ipv4_cidr_block  = "/14"
-    services_ipv4_cidr_block = "/20"
+    cluster_ipv4_cidr_block  = var.cluster_network_config.cluster_ipv4_cidr_block
+    services_ipv4_cidr_block = var.cluster_network_config.services_ipv4_cidr_block
   }
 
   # 配置日志和监控
