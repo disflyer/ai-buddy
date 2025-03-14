@@ -76,6 +76,8 @@ jobs:
           project_id: ${{ env.PROJECT_ID }}
           create_credentials_file: true
           export_environment_variables: true
+          token_format: 'access_token'
+          access_token_lifetime: '3600s'
       
       - name: 复制凭证文件
         run: |
@@ -90,8 +92,15 @@ jobs:
       # 配置 Docker 认证
       - name: 配置 Docker 认证
         run: |
+          echo "配置 Docker 认证..."
+          # 配置 Artifact Registry
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
           gcloud auth configure-docker gcr.io --quiet
+          
+          # 验证认证配置
+          echo "验证 Docker 认证配置..."
+          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev
+          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://gcr.io
       
       # 启用必要的API服务
       - name: 启用必要的API服务
