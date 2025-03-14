@@ -4,7 +4,7 @@ remote_state {
   config = {
     bucket  = "tfstate-rare-attic"
     prefix  = "${path_relative_to_include()}"
-    credentials = "service-account.json"
+    credentials = "${get_repo_root()}/devops/service-account.json"
   }
   generate = {
     path      = "backend.tf"
@@ -34,7 +34,7 @@ terraform {
 provider "google" {
   project     = var.project_id
   region      = var.region
-  credentials = file("service-account.json")
+  credentials = file("${get_parent_terragrunt_dir()}/service-account.json")
 }
 EOF
 }

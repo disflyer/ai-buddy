@@ -89,6 +89,13 @@ jobs:
           create_credentials_file: true
           export_environment_variables: true
       
+      - name: 复制凭证文件
+        run: |
+          # 将凭证文件复制到 Terragrunt 期望的位置
+          echo "复制凭证文件到 devops/service-account.json..."
+          cp ${{ steps.auth.outputs.credentials_file_path }} devops/service-account.json
+          echo "凭证文件已复制！"
+      
       - name: 设置Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
