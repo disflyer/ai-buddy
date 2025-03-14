@@ -15,7 +15,7 @@ variable "env" {
 variable "region" {
   description = "集群部署区域"
   type        = string
-  default     = "asia"
+  default     = "us-central1"
 }
 
 variable "vpc_name" {

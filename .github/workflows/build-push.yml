@@ -35,7 +35,7 @@ jobs:
           gcloud services enable artifactregistry.googleapis.com
           
           # 配置Docker使用gcloud凭证
-          gcloud auth configure-docker asia.gcr.io --quiet
+          gcloud auth configure-docker gcr.io --quiet
       
       - name: 构建并推送镜像
         run: |
@@ -44,7 +44,7 @@ jobs:
           SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
           
           # 构建镜像
-          docker build -t asia.gcr.io/rare-attic-453703-a8/app-server:$SHORT_SHA .
+          docker build -t gcr.io/rare-attic-453703-a8/app-server:$SHORT_SHA .
           
           # 添加环境标签
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
@@ -54,8 +54,8 @@ jobs:
           fi
           
           # 标记镜像
-          docker tag asia.gcr.io/rare-attic-453703-a8/app-server:$SHORT_SHA asia.gcr.io/rare-attic-453703-a8/app-server:$ENV_TAG
+          docker tag gcr.io/rare-attic-453703-a8/app-server:$SHORT_SHA gcr.io/rare-attic-453703-a8/app-server:$ENV_TAG
           
           # 推送镜像
-          docker push asia.gcr.io/rare-attic-453703-a8/app-server:$SHORT_SHA
-          docker push asia.gcr.io/rare-attic-453703-a8/app-server:$ENV_TAG
+          docker push gcr.io/rare-attic-453703-a8/app-server:$SHORT_SHA
+          docker push gcr.io/rare-attic-453703-a8/app-server:$ENV_TAG

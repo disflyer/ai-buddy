@@ -60,10 +60,10 @@ locals {
   
   # 项目配置
   project_id       = "rare-attic-453703-a8"
-  region           = "asia"
+  region           = "us-central1"
   gke_cluster_name = "ai-buddy-cluster"
   
   # 应用配置
   app_name  = "app-server"
-  image_repo = "asia.gcr.io"
+  image_repo = "gcr.io"
 } 

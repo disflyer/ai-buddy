@@ -60,7 +60,7 @@ EOF
 inputs = {
   env              = "staging"
   gke_cluster_name = dependency.gke_cluster.outputs.cluster_name
-  image_repo       = "asia.gcr.io"  # 选择最近的镜像仓库
+  image_repo       = "gcr.io"  # 选择最近的镜像仓库
   image_name       = "app-server"
   image_tag        = "staging-latest"
   namespace        = "staging"  # 使用staging命名空间
