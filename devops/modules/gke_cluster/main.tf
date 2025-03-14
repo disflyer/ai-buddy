@@ -155,66 +155,13 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # 配置节点池
-  node_config {
-    # 基本配置
-    machine_type = var.cluster_tier.machine_type
-    disk_size_gb = var.cluster_tier.disk_size_gb
-    disk_type    = "pd-standard"
-    
-    # OAuth作用域
-    oauth_scopes = [
-      "https://www.googleapis.com/auth/devstorage.read_only",
-      "https://www.googleapis.com/auth/logging.write",
-      "https://www.googleapis.com/auth/monitoring",
-      "https://www.googleapis.com/auth/service.management.readonly",
-      "https://www.googleapis.com/auth/servicecontrol",
-      "https://www.googleapis.com/auth/trace.append",
-    ]
-    
-    # 标签和元数据
-    labels = local.common_labels
-    metadata = {
-      disable-legacy-endpoints = "true"
-    }
-    
-    # 工作负载身份
-    workload_metadata_config {
-      mode = "GKE_METADATA"
-    }
-    
-    # 抢占式虚拟机
-    spot = var.cluster_tier.preemptible
-    
-    # 安全设置
-    shielded_instance_config {
-      enable_secure_boot          = true
-      enable_integrity_monitoring = true
-    }
-  }
-  
-  # 配置节点自动修复和升级
-  management {
-    auto_repair  = true
-    auto_upgrade = true
-  }
-  
-  # 配置自动扩缩容
-  autoscaling {
-    min_node_count = var.cluster_tier.min_node_count
-    max_node_count = var.cluster_tier.max_node_count
-  }
-  
-  # 配置升级设置
-  upgrade_settings {
-    max_surge       = 1
-    max_unavailable = 0
-  }
-
   # 配置垂直Pod自动扩缩容
   vertical_pod_autoscaling {
     enabled = true
   }
+
+  # 移除默认节点池
+  remove_default_node_pool = true
 
   depends_on = [
     google_compute_router_nat.nat
