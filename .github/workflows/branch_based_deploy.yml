@@ -126,29 +126,28 @@ jobs:
       
       - name: 构建并推送Docker镜像
         run: |
-          # 设置镜像标签
-          if [[ "${{ env.DEPLOY_ENV }}" == "prod" ]]; then
-            IMAGE_TAG="prod-$(date +%Y%m%d-%H%M%S)"
-          elif [[ "${{ env.DEPLOY_ENV }}" == "staging" ]]; then
-            IMAGE_TAG="staging-$(date +%Y%m%d-%H%M%S)"
-          else
-            IMAGE_TAG="dev-$(date +%Y%m%d-%H%M%S)"
-          fi
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-          
-          # 配置Docker
-          gcloud auth configure-docker ${{ env.GCR_HOST }} --quiet
-          
-          # 构建镜像
-          docker build -t ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:$IMAGE_TAG ./server
-          
-          # 推送镜像
-          docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:$IMAGE_TAG
-          
-          # 设置latest标签
-          docker tag ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:$IMAGE_TAG ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
-          docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
-      
+            # 设置镜像标签
+            if [[ "${{ env.DEPLOY_ENV }}" == "prod" ]]; then
+                IMAGE_TAG="prod-$(date +%Y%m%d-%H%M%S)"
+            elif [[ "${{ env.DEPLOY_ENV }}" == "staging" ]]; then
+                IMAGE_TAG="staging-$(date +%Y%m%d-%H%M%S)"
+            else
+                IMAGE_TAG="dev-$(date +%Y%m%d-%H%M%S)"
+            fi
+            echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+            
+            # 配置Docker
+            gcloud auth configure-docker ${{ env.GCR_HOST }} --quiet
+            
+            # 构建镜像 - 使用 gcr-us-central1 仓库
+            docker build -t ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG ./server
+            
+            # 推送镜像
+            docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG
+            
+            # 设置latest标签
+            docker tag ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
+            docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
       # 先部署基础设施
       - name: 部署网络
         run: |
