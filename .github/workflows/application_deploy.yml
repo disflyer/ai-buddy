@@ -21,11 +21,6 @@ env:
   PROJECT_ID: rare-attic-453703-a8
   GKE_REGION: us-central1
   GCR_HOST: us-central1-docker.pkg.dev
-  TERRAFORM_SA_NAME: terraform-deployer
-  CI_SA_NAME: github-actions-ci
-  CONFIG_SECRET_NAME: .config.yaml
-  JWT_SECRET_NAME: jwt-secret
-  STORAGE_BUCKET_NAME: rare-attic-453703-a8-storage
   APP_NAME: app-server
   ENV_PROD: prod
   ENV_STAGING: staging
@@ -81,8 +76,6 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
           project_id: ${{ env.PROJECT_ID }}
-          create_credentials_file: true
-          export_environment_variables: true
       
       - name: 设置Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
@@ -90,73 +83,52 @@ jobs:
           version: '>= 363.0.0'
           install_components: 'kubectl,gke-gcloud-auth-plugin'
       
-      - name: 验证Google Cloud身份验证
-        run: |
-          # 验证身份验证状态
-          echo "当前认证账号:"
-          gcloud auth list
-          
-          echo "当前配置:"
-          gcloud config list
-          
-          # 确保项目已设置
-          echo "设置当前项目为: ${{ env.PROJECT_ID }}"
-          gcloud config set project ${{ env.PROJECT_ID }}
-      
       - name: 构建并推送Docker镜像
         run: |
-            # 设置镜像标签
-            if [[ "${{ env.DEPLOY_ENV }}" == "prod" ]]; then
-                IMAGE_TAG="prod-$(date +%Y%m%d-%H%M%S)"
-            else
-                IMAGE_TAG="staging-$(date +%Y%m%d-%H%M%S)"
-            fi
-            echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-            
-            # 配置Docker
-            gcloud auth configure-docker ${{ env.GCR_HOST }} --quiet
-            
-            # 构建镜像
-            docker build -t ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG ./server
-            
-            # 推送镜像
-            docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG
-            
-            # 设置latest标签
-            docker tag ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
-            docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
-      
-      # 检查GKE集群是否存在
-      - name: 检查GKE集群是否存在
-        id: check_cluster
-        run: |
-          if gcloud container clusters describe ${{ env.GKE_CLUSTER_NAME }} --region ${{ env.GKE_REGION }} --project ${{ env.PROJECT_ID }} &> /dev/null; then
-            echo "GKE集群 ${{ env.GKE_CLUSTER_NAME }} 已存在"
-            echo "cluster_exists=true" >> $GITHUB_OUTPUT
+          # 设置镜像标签
+          if [[ "${{ env.DEPLOY_ENV }}" == "prod" ]]; then
+              IMAGE_TAG="prod-$(date +%Y%m%d-%H%M%S)"
           else
-            echo "GKE集群 ${{ env.GKE_CLUSTER_NAME }} 不存在，请先运行基础设施部署工作流"
-            echo "cluster_exists=false" >> $GITHUB_OUTPUT
-            exit 1
+              IMAGE_TAG="staging-$(date +%Y%m%d-%H%M%S)"
           fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          
+          # 配置Docker
+          gcloud auth configure-docker ${{ env.GCR_HOST }} --quiet
+          
+          # 构建镜像
+          docker build -t ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG ./server
+          
+          # 推送镜像
+          docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG
+          
+          # 设置latest标签
+          docker tag ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
+          docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
       
       # 获取集群凭证
       - name: 获取集群凭证
-        if: steps.check_cluster.outputs.cluster_exists == 'true'
         run: |
+          # 检查GKE集群是否存在
+          if ! gcloud container clusters describe ${{ env.GKE_CLUSTER_NAME }} --region ${{ env.GKE_REGION }} --project ${{ env.PROJECT_ID }} &> /dev/null; then
+            echo "错误: GKE集群 ${{ env.GKE_CLUSTER_NAME }} 不存在，请先运行基础设施部署工作流"
+            exit 1
+          fi
+          
           # 获取GKE集群凭证
-          echo "获取GKE集群凭证..."
           gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
             --region ${{ env.GKE_REGION }} \
             --project ${{ env.PROJECT_ID }}
       
       # 设置Terraform和Terragrunt
-      - name: 设置Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: 1.0.0
-      
-      - name: 安装Terragrunt
+      - name: 设置Terraform和Terragrunt
         run: |
+          # 安装Terraform
+          wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update && sudo apt install terraform=1.0.0
+          
+          # 安装Terragrunt
           wget https://github.com/gruntwork-io/terragrunt/releases/download/v0.38.0/terragrunt_linux_amd64
           chmod +x terragrunt_linux_amd64
           sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
@@ -164,36 +136,20 @@ jobs:
       # 部署应用
       - name: 部署应用服务
         run: |
-          # 创建临时变量文件，覆盖镜像标签
-          cat > override.tfvars << EOF
-          image_tag = "${{ env.IMAGE_TAG }}"
-          EOF
-          
           cd devops/environments/${{ env.DEPLOY_ENV }}/app_server
           terragrunt init
-          terragrunt apply -var-file=override.tfvars -auto-approve
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" -var="image_tag=${{ env.IMAGE_TAG }}"
       
       - name: 验证部署
         run: |
           # 检查部署状态
           kubectl get deployments -n ${{ env.NAMESPACE }}
-          kubectl get pods -n ${{ env.NAMESPACE }}
           
           # 获取服务IP
-          echo "应用服务访问地址: $(kubectl get service ${{ env.DEPLOY_ENV }}-${{ env.APP_NAME }}-lb -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-      
-      - name: 部署通知
-        if: always()
-        run: |
-          # 获取部署结果
-          if [[ $? -eq 0 ]]; then
-            DEPLOY_STATUS="成功"
-          else
-            DEPLOY_STATUS="失败"
-          fi
+          SERVICE_IP=$(kubectl get service ${{ env.DEPLOY_ENV }}-${{ env.APP_NAME }}-lb -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "应用服务访问地址: $SERVICE_IP"
           
-          echo "应用部署结果: $DEPLOY_STATUS"
+          echo "应用部署完成"
           echo "部署环境: ${{ env.DEPLOY_ENV }}"
           echo "命名空间: ${{ env.NAMESPACE }}"
-          echo "镜像标签: ${{ env.IMAGE_TAG }}"
-          echo "触发分支: ${GITHUB_REF#refs/heads/}" 
+          echo "镜像标签: ${{ env.IMAGE_TAG }}" 
