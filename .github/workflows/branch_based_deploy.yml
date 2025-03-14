@@ -22,7 +22,7 @@ env:
   PROJECT_ID: rare-attic-453703-a8
   GKE_REGION: us-central1
   GCR_HOST: gcr.io
-  GKE_CLUSTER_NAME: ai-buddy-cluster
+  # 移除固定的集群名称，将在每个环境中动态设置
   TERRAFORM_SA_NAME: terraform-deployer
   CI_SA_NAME: github-actions-ci
   CONFIG_SECRET_NAME: .config.yaml
@@ -80,6 +80,9 @@ jobs:
           else
             echo "NAMESPACE=development" >> $GITHUB_ENV
           fi
+          
+          # 根据环境设置GKE集群名称
+          echo "GKE_CLUSTER_NAME=${DEPLOY_ENV}-gke-cluster" >> $GITHUB_ENV
       
       - name: 设置Terraform
         uses: hashicorp/setup-terraform@v1
@@ -121,29 +124,6 @@ jobs:
           echo "设置当前项目为: ${{ env.PROJECT_ID }}"
           gcloud config set project ${{ env.PROJECT_ID }}
       
-      - name: 创建Kubernetes命名空间
-        run: |
-          # 获取GKE集群凭证
-          echo "获取GKE集群凭证..."
-          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
-            --region ${{ env.GKE_REGION }} \
-            --project ${{ env.PROJECT_ID }}
-          
-          # 创建命名空间（如果不存在）
-          echo "创建生产环境命名空间 ${{ env.NAMESPACE_PROD }}..."
-          kubectl create namespace ${{ env.NAMESPACE_PROD }} --dry-run=client -o yaml | kubectl apply -f -
-          kubectl label namespace ${{ env.NAMESPACE_PROD }} environment=${{ env.ENV_PROD }} --overwrite
-          
-          echo "创建预发布环境命名空间 ${{ env.NAMESPACE_STAGING }}..."
-          kubectl create namespace ${{ env.NAMESPACE_STAGING }} --dry-run=client -o yaml | kubectl apply -f -
-          kubectl label namespace ${{ env.NAMESPACE_STAGING }} environment=${{ env.ENV_STAGING }} --overwrite
-          
-          echo "创建开发环境命名空间 ${{ env.NAMESPACE_DEV }}..."
-          kubectl create namespace ${{ env.NAMESPACE_DEV }} --dry-run=client -o yaml | kubectl apply -f -
-          kubectl label namespace ${{ env.NAMESPACE_DEV }} environment=${{ env.ENV_DEV }} --overwrite
-          
-          echo "命名空间设置完成！"
-      
       - name: 构建并推送Docker镜像
         run: |
           # 设置镜像标签
@@ -169,6 +149,7 @@ jobs:
           docker tag ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:$IMAGE_TAG ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
           docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
       
+      # 先部署基础设施
       - name: 部署网络
         run: |
           cd devops/environments/${{ env.DEPLOY_ENV }}/network
@@ -187,6 +168,31 @@ jobs:
           terragrunt init
           terragrunt apply -auto-approve
       
+      # 在基础设施部署后获取集群凭证并创建命名空间
+      - name: 获取集群凭证并创建命名空间
+        run: |
+          # 获取GKE集群凭证
+          echo "获取GKE集群凭证..."
+          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
+            --region ${{ env.GKE_REGION }} \
+            --project ${{ env.PROJECT_ID }}
+          
+          # 创建命名空间（如果不存在）
+          echo "创建生产环境命名空间 ${{ env.NAMESPACE_PROD }}..."
+          kubectl create namespace ${{ env.NAMESPACE_PROD }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace ${{ env.NAMESPACE_PROD }} environment=${{ env.ENV_PROD }} --overwrite
+          
+          echo "创建预发布环境命名空间 ${{ env.NAMESPACE_STAGING }}..."
+          kubectl create namespace ${{ env.NAMESPACE_STAGING }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace ${{ env.NAMESPACE_STAGING }} environment=${{ env.ENV_STAGING }} --overwrite
+          
+          echo "创建开发环境命名空间 ${{ env.NAMESPACE_DEV }}..."
+          kubectl create namespace ${{ env.NAMESPACE_DEV }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace ${{ env.NAMESPACE_DEV }} environment=${{ env.ENV_DEV }} --overwrite
+          
+          echo "命名空间设置完成！"
+      
+      # 最后部署应用
       - name: 部署应用服务
         run: |
           # 创建临时变量文件，覆盖镜像标签
