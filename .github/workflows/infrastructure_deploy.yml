@@ -122,7 +122,7 @@ jobs:
           echo "开始部署网络..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/network
           terragrunt init
-          terragrunt apply -auto-approve
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
       
       # 部署GKE集群
       - name: 部署GKE集群
@@ -131,7 +131,7 @@ jobs:
           echo "开始部署GKE集群..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/gke_cluster
           terragrunt init
-          terragrunt apply -auto-approve
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
       
       # 部署Secret Manager
       - name: 部署Secret Manager
@@ -140,7 +140,7 @@ jobs:
           echo "开始部署Secret Manager..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/secret_manager
           terragrunt init
-          terragrunt apply -auto-approve
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
       
       # 创建命名空间
       - name: 创建命名空间
