@@ -22,5 +22,5 @@ output "service_account_email" {
 
 output "network_self_link" {
   description = "VPC网络链接"
-  value       = google_compute_network.vpc.self_link
+  value       = data.google_compute_network.vpc.self_link
 }
