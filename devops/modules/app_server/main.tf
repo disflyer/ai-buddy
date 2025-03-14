@@ -37,6 +37,58 @@ resource "kubernetes_deployment" "app_server" {
       }
 
       spec {
+        # 添加服务账号
+        service_account_name = kubernetes_service_account.app_server_sa.metadata[0].name
+        
+        # 初始化容器 - 用于下载模型文件
+        init_container {
+          name  = "model-downloader"
+          image = "python:3.11-slim"
+          
+          command = [
+            "bash",
+            "-c",
+            <<-EOT
+            # 安装huggingface_hub
+            pip install huggingface_hub
+
+            # 模型目录
+            MODEL_DIR="/app/models/SenseVoiceSmall"
+            # 缓存目录
+            CACHE_DIR="/app/models/.cache"
+            # 标记文件，用于判断模型是否已下载
+            DOWNLOADED_FLAG="$MODEL_DIR/.downloaded"
+
+            # 创建模型目录和缓存目录
+            mkdir -p $MODEL_DIR
+            mkdir -p $CACHE_DIR
+
+            # 检查是否需要下载模型
+            if [ ! -f "$DOWNLOADED_FLAG" ]; then
+              echo "正在从Hugging Face下载SenseVoiceSmall模型..."
+              # 使用huggingface_hub下载模型，启用缓存，指定版本（可选）
+              python -c "
+from huggingface_hub import snapshot_download
+# 下载模型，使用缓存，可以指定特定版本（如果需要）
+# 如果需要特定版本，取消下面一行的注释并指定revision参数
+# snapshot_download(repo_id='FunAudioLLM/SenseVoiceSmall', local_dir='$MODEL_DIR', cache_dir='$CACHE_DIR', revision='main')
+snapshot_download(repo_id='FunAudioLLM/SenseVoiceSmall', local_dir='$MODEL_DIR', cache_dir='$CACHE_DIR')
+              "
+              touch $DOWNLOADED_FLAG
+              echo "模型下载完成"
+            else
+              echo "模型已存在，跳过下载"
+            fi
+            EOT
+          ]
+          
+          # 挂载模型持久卷
+          volume_mount {
+            name       = "models-volume"
+            mount_path = "/app/models"
+          }
+        }
+        
         container {
           name  = "app-server"
           image = "${var.image_repo}/${var.project_id}/${var.image_name}:${var.image_tag}"
@@ -78,6 +130,12 @@ resource "kubernetes_deployment" "app_server" {
             mount_path = "/app/data"
             read_only  = true
           }
+          
+          # 挂载模型持久卷
+          volume_mount {
+            name       = "models-volume"
+            mount_path = "/app/models"
+          }
         }
 
         # 配置文件卷
@@ -91,6 +149,15 @@ resource "kubernetes_deployment" "app_server" {
             }
           }
         }
+        
+        # 模型持久卷 - 使用emptyDir，这样Pod重启时模型会保留
+        volume {
+          name = "models-volume"
+          empty_dir {
+            # 可以设置大小限制，防止模型文件过大占用太多空间
+            size_limit = "5Gi"
+          }
+        }
 
         node_selector = {
           "cloud.google.com/gke-nodepool" = "default-pool"
@@ -98,6 +165,35 @@ resource "kubernetes_deployment" "app_server" {
       }
     }
   }
+}
+
+# 创建服务账号
+resource "kubernetes_service_account" "app_server_sa" {
+  metadata {
+    name = "${var.env}-app-server-sa"
+  }
+}
+
+# 创建IAM策略绑定，授予GCS访问权限
+resource "google_service_account_iam_binding" "workload_identity_binding" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${var.gcp_service_account}"
+  role               = "roles/iam.workloadIdentityUser"
+  members            = [
+    "serviceAccount:${var.project_id}.svc.id.goog[default/${kubernetes_service_account.app_server_sa.metadata[0].name}]"
+  ]
+}
+
+# 添加注解，启用Workload Identity
+resource "kubernetes_annotations" "service_account_annotation" {
+  api_version = "v1"
+  kind        = "ServiceAccount"
+  metadata {
+    name = kubernetes_service_account.app_server_sa.metadata[0].name
+  }
+  annotations = {
+    "iam.gke.io/gcp-service-account" = var.gcp_service_account
+  }
+  depends_on = [kubernetes_service_account.app_server_sa]
 }
 
 # 创建Google Cloud SDK凭证Secret

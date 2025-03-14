@@ -11,11 +11,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 安装PDM
 RUN pip install pdm
 
+# 设置PDM环境变量，使其使用系统Python而不是创建虚拟环境
+ENV PDM_USE_VENV=false
+ENV PYTHONPATH=/app
+
 # 复制依赖文件
 COPY pyproject.toml pdm.lock ./
 
 # 安装依赖
-RUN pdm sync
+RUN pip install ruamel.yaml && \
+    pdm install --prod --no-self
+
+# 创建模型目录
+RUN mkdir -p /app/models/SenseVoiceSmall
+
+# 复制启动脚本
+COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 # 复制应用代码
 COPY . .
@@ -24,4 +36,4 @@ COPY . .
 EXPOSE 8000
 
 # 启动应用
-CMD ["pdm", "run", "start"] 
+CMD ["/app/docker-entrypoint.sh"] 

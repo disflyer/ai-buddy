@@ -83,3 +83,9 @@ variable "google_application_credentials" {
   type        = string
   sensitive   = true
 }
+
+variable "gcp_service_account" {
+  description = "GCP服务账号邮箱，用于Workload Identity"
+  type        = string
+  default     = "ai-buddy-gcs@rare-attic-453703-a8.iam.gserviceaccount.com"
+}
