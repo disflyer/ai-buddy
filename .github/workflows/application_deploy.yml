@@ -137,7 +137,6 @@ jobs:
       - name: 部署应用服务
         run: |
           cd devops/environments/${{ env.DEPLOY_ENV }}/app_server
-          terragrunt init
           terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" -var="image_tag=${{ env.IMAGE_TAG }}"
       
       - name: 验证部署
