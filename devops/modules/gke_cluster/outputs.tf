@@ -20,7 +20,7 @@ output "service_account_email" {
   value       = google_service_account.gke_node.email
 }
 
-output "network_self_link" {
-  description = "VPC网络链接"
-  value       = data.google_compute_network.vpc.self_link
+output "network_name" {
+  description = "VPC网络名称"
+  value       = data.google_compute_network.vpc.name
 }

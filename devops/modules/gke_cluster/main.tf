@@ -14,7 +14,7 @@ data "google_compute_subnetwork" "subnet" {
 resource "google_compute_router" "router" {
   name    = "${var.env}-nat-router"
   region  = var.region
-  network = data.google_compute_network.vpc.self_link
+  network = data.google_compute_network.vpc.name
 }
 
 resource "google_compute_router_nat" "nat" {
