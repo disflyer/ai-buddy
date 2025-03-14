@@ -1,33 +1,20 @@
-# 创建专用VPC网络
-resource "google_compute_network" "vpc" {
-  name                    = var.vpc_name
-  auto_create_subnetworks = false
-  routing_mode            = "REGIONAL"
+# 引用现有的 VPC 网络
+data "google_compute_network" "vpc" {
+  name = var.vpc_name
 }
 
-# 创建子网
-resource "google_compute_subnetwork" "subnet" {
-  name          = "${var.env}-gke-subnet"
-  ip_cidr_range = var.subnet_cidr
-  region        = var.region
-  network       = google_compute_network.vpc.id
-
-  secondary_ip_range {
-    range_name    = "pods-range"
-    ip_cidr_range = "192.168.0.0/18"
-  }
-
-  secondary_ip_range {
-    range_name    = "services-range"
-    ip_cidr_range = "192.168.64.0/18"
-  }
+# 引用现有的子网
+data "google_compute_subnetwork" "subnet" {
+  name    = "${var.env}-gke-subnet"
+  region  = var.region
+  network = data.google_compute_network.vpc.id
 }
 
 # NAT网关配置
 resource "google_compute_router" "router" {
   name    = "${var.env}-nat-router"
   region  = var.region
-  network = google_compute_network.vpc.id
+  network = data.google_compute_network.vpc.id
 }
 
 resource "google_compute_router_nat" "nat" {
@@ -53,8 +40,8 @@ resource "google_container_cluster" "primary" {
   location           = var.region
   initial_node_count = 1
 
-  network    = google_compute_network.vpc.name
-  subnetwork = google_compute_subnetwork.subnet.name
+  network    = data.google_compute_network.vpc.name
+  subnetwork = data.google_compute_subnetwork.subnet.name
 
   # 添加环境标签
   resource_labels = local.common_labels
