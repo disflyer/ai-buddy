@@ -47,7 +47,7 @@ jobs:
           fi
           
           # 根据环境设置GKE集群名称
-          echo "GKE_CLUSTER_NAME=${DEPLOY_ENV}-gke-cluster" >> $GITHUB_ENV
+          echo "GKE_CLUSTER_NAME=ai-buddy-cluster" >> $GITHUB_ENV
           
           # 解析要部署的组件
           IFS=',' read -ra COMPONENTS <<< "${{ github.event.inputs.components }}"
