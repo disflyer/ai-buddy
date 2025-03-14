@@ -21,7 +21,7 @@ on:
 env:
   PROJECT_ID: rare-attic-453703-a8
   GKE_REGION: us-central1
-  GCR_HOST: gcr.io
+  GCR_HOST: us-central1-docker.pkg.dev
   # 移除固定的集群名称，将在每个环境中动态设置
   TERRAFORM_SA_NAME: terraform-deployer
   CI_SA_NAME: github-actions-ci

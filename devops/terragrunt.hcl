@@ -65,5 +65,5 @@ locals {
   
   # 应用配置
   app_name  = "app-server"
-  image_repo = "gcr.io"
+  image_repo = "us-central1-docker.pkg.dev"
 } 

@@ -60,7 +60,7 @@ EOF
 inputs = {
   env              = "prod"
   gke_cluster_name = dependency.gke_cluster.outputs.cluster_name
-  image_repo       = "gcr.io"  # 使用亚洲区域的镜像仓库
+  image_repo       = "us-central1-docker.pkg.dev"  # 使用亚洲区域的镜像仓库
   image_name       = "app-server"
   image_tag        = "prod-latest"
   namespace        = "production"  # 使用production命名空间
