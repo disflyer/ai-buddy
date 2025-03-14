@@ -63,7 +63,7 @@ variable "maintenance_window" {
   }
   validation {
     condition     = can(regex("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", var.maintenance_window.start_time))
-    error_message = "维护窗口开始时间必须是24小时格式 (例如: 03:00, 15:30)。"
+    error_message = "The start time must be in 24-hour format (e.g., 03:00, 15:30)."
   }
 }
 
