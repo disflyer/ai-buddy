@@ -21,6 +21,20 @@ on:
 env:
   PROJECT_ID: rare-attic-453703-a8
   GKE_REGION: asia
+  GCR_HOST: asia.gcr.io
+  GKE_CLUSTER_NAME: ai-buddy-cluster
+  TERRAFORM_SA_NAME: terraform-deployer
+  CI_SA_NAME: github-actions-ci
+  CONFIG_SECRET_NAME: .config.yaml
+  JWT_SECRET_NAME: jwt-secret
+  STORAGE_BUCKET_NAME: rare-attic-453703-a8-storage
+  APP_NAME: app-server
+  ENV_PROD: prod
+  ENV_STAGING: staging
+  ENV_DEV: dev
+  NAMESPACE_PROD: production
+  NAMESPACE_STAGING: staging
+  NAMESPACE_DEV: development
   
 jobs:
   deploy:
@@ -91,11 +105,28 @@ jobs:
       
       - name: 创建Kubernetes命名空间
         run: |
-          # 加载项目配置
-          source secrets/project_config.sh
+          # 确保启用了必要的API
+          gcloud services enable container.googleapis.com
           
-          # 执行创建命名空间脚本
-          bash secrets/create_namespaces.sh
+          # 获取GKE集群凭证
+          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
+            --region ${{ env.GKE_REGION }} \
+            --project ${{ env.PROJECT_ID }}
+          
+          # 创建命名空间（如果不存在）
+          echo "创建生产环境命名空间 ${{ env.NAMESPACE_PROD }}..."
+          kubectl create namespace ${{ env.NAMESPACE_PROD }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace ${{ env.NAMESPACE_PROD }} environment=${{ env.ENV_PROD }} --overwrite
+          
+          echo "创建预发布环境命名空间 ${{ env.NAMESPACE_STAGING }}..."
+          kubectl create namespace ${{ env.NAMESPACE_STAGING }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace ${{ env.NAMESPACE_STAGING }} environment=${{ env.ENV_STAGING }} --overwrite
+          
+          echo "创建开发环境命名空间 ${{ env.NAMESPACE_DEV }}..."
+          kubectl create namespace ${{ env.NAMESPACE_DEV }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace ${{ env.NAMESPACE_DEV }} environment=${{ env.ENV_DEV }} --overwrite
+          
+          echo "命名空间设置完成！"
       
       - name: 构建并推送Docker镜像
         run: |
@@ -109,18 +140,22 @@ jobs:
           fi
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
           
+          # 确保启用了Artifact Registry API
+          gcloud services enable artifactregistry.googleapis.com
+          gcloud services enable containerregistry.googleapis.com
+          
           # 配置Docker
-          gcloud auth configure-docker asia.gcr.io
+          gcloud auth configure-docker ${{ env.GCR_HOST }}
           
           # 构建镜像
-          docker build -t asia.gcr.io/${{ env.PROJECT_ID }}/app-server:$IMAGE_TAG ./server
+          docker build -t ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:$IMAGE_TAG ./server
           
           # 推送镜像
-          docker push asia.gcr.io/${{ env.PROJECT_ID }}/app-server:$IMAGE_TAG
+          docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:$IMAGE_TAG
           
           # 设置latest标签
-          docker tag asia.gcr.io/${{ env.PROJECT_ID }}/app-server:$IMAGE_TAG asia.gcr.io/${{ env.PROJECT_ID }}/app-server:${{ env.DEPLOY_ENV }}-latest
-          docker push asia.gcr.io/${{ env.PROJECT_ID }}/app-server:${{ env.DEPLOY_ENV }}-latest
+          docker tag ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:$IMAGE_TAG ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
+          docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
       
       - name: 部署网络
         run: |
@@ -163,7 +198,7 @@ jobs:
           kubectl get pods -n ${{ env.NAMESPACE }}
           
           # 获取服务IP
-          echo "应用服务访问地址: $(kubectl get service ${{ env.DEPLOY_ENV }}-app-server-lb -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+          echo "应用服务访问地址: $(kubectl get service ${{ env.DEPLOY_ENV }}-${{ env.APP_NAME }}-lb -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
       
       - name: 部署通知
         if: always()
