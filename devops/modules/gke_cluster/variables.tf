@@ -4,10 +4,10 @@ variable "project_id" {
 }
 
 variable "env" {
-  description = "环境标识 (prod/staging/dev)"
+  description = "环境标识 (prod/staging)"
   type        = string
   validation {
-    condition     = contains(["prod", "staging", "dev"], var.env)
+    condition     = contains(["prod", "staging"], var.env)
     error_message = "The environment value must be one of: prod, staging, or dev."
   }
 }
@@ -56,12 +56,20 @@ variable "cluster_tier" {
 variable "maintenance_window" {
   description = "维护窗口配置"
   type = object({
-    day       = string
+    day        = string
     start_time = string
   })
   default = {
-    day        = "SUNDAY"
+    day        = "SU"  # SUNDAY的缩写
     start_time = "03:00"
+  }
+  validation {
+    condition     = contains(["MO", "TU", "WE", "TH", "FR", "SA", "SU"], var.maintenance_window.day)
+    error_message = "维护窗口的日期必须是以下值之一: MO, TU, WE, TH, FR, SA, SU"
+  }
+  validation {
+    condition     = can(regex("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", var.maintenance_window.start_time))
+    error_message = "开始时间必须是24小时制的时间格式，例如: 03:00, 15:30"
   }
 }
 

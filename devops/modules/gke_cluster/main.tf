@@ -69,8 +69,8 @@ resource "google_container_cluster" "primary" {
   # 维护窗口
   maintenance_policy {
     recurring_window {
-      start_time = "${var.maintenance_window.start_time}:00Z"
-      end_time   = "${(tonumber(split(":", var.maintenance_window.start_time)[0]) + 4) % 24}:00:00Z"
+      start_time = "2024-01-01T${var.maintenance_window.start_time}:00Z"
+      end_time   = "2024-01-01T${(tonumber(split(":", var.maintenance_window.start_time)[0]) + 4) % 24}:00:00Z"
       recurrence = "FREQ=WEEKLY;BYDAY=${substr(var.maintenance_window.day, 0, 2)}"
     }
   }

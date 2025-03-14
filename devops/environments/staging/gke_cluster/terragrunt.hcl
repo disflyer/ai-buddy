@@ -36,7 +36,7 @@ inputs = {
   }
   
   maintenance_window = {
-    day        = "SUNDAY"
+    day        = "SU"
     start_time = "03:00"
   }
 } 
