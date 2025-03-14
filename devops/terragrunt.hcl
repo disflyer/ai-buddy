@@ -5,8 +5,6 @@ remote_state {
     bucket  = "tfstate-rare-attic"
     prefix  = "${path_relative_to_include()}"
     credentials = "${get_repo_root()}/devops/service-account.json"
-    lock = false  # 禁用状态锁
-    skip_bucket_creation = true  # 跳过创建存储桶
   }
   generate = {
     path      = "backend.tf"
