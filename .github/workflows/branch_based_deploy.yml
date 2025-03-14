@@ -42,7 +42,7 @@ jobs:
     
     steps:
       - name: 检出代码
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: 设置环境变量
         run: |
@@ -92,32 +92,39 @@ jobs:
           chmod +x terragrunt_linux_amd64
           sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
       
-      - name: 设置Google Cloud凭证
-        run: |
-          echo '${{ secrets.GCP_SA_KEY }}' > devops/service-account.json
+      # 使用 google-github-actions/auth 进行身份验证
+      - name: 设置Google Cloud身份验证
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          project_id: ${{ env.PROJECT_ID }}
+          create_credentials_file: true
+          export_environment_variables: true
       
       - name: 设置Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
-          project_id: ${{ env.PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
+          version: '>= 363.0.0'
+          install_components: 'kubectl,gke-gcloud-auth-plugin'
       
       - name: 验证Google Cloud身份验证
         run: |
           # 验证身份验证状态
+          echo "当前认证账号:"
           gcloud auth list
+          
+          echo "当前配置:"
           gcloud config list
           
           # 确保项目已设置
+          echo "设置当前项目为: ${{ env.PROJECT_ID }}"
           gcloud config set project ${{ env.PROJECT_ID }}
-          
-          # 确保启用了必要的API（假设API已经手动启用）
-          echo "跳过API启用步骤，假设API已经手动启用"
       
       - name: 创建Kubernetes命名空间
         run: |
           # 获取GKE集群凭证
+          echo "获取GKE集群凭证..."
           gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
             --region ${{ env.GKE_REGION }} \
             --project ${{ env.PROJECT_ID }}
