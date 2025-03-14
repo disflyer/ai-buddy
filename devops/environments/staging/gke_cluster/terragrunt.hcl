@@ -20,13 +20,33 @@ dependency "network" {
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
+# 从根配置获取全局变量
+locals {
+  # 从根配置获取变量
+  root_config = read_terragrunt_config(find_in_parent_folders())
+  
+  # 获取项目配置
+  project_id = local.root_config.locals.project_id
+  region     = local.root_config.locals.region
+  env        = "staging"  # 明确设置环境
+}
+
 # 模块特定输入
 inputs = {
+  # 项目和环境变量
+  project_id = local.project_id
+  region     = local.region
+  env        = local.env
+  
+  # 网络配置
   vpc_name = dependency.network.outputs.vpc_name
   
   # 环境特定的网络资源创建控制
   # 可以被 TF_VAR_create_network_resources 环境变量覆盖
   create_network_resources = get_env("TF_VAR_create_network_resources", "false")
+  
+  # 集群配置
+  cluster_name = local.root_config.locals.gke_cluster_name
   
   cluster_tier = {
     machine_type        = "e2-standard-2"  # 测试环境使用经济机型
@@ -42,5 +62,12 @@ inputs = {
   maintenance_window = {
     day        = "SU"
     start_time = "03:00"
+  }
+  
+  # 网络配置
+  cluster_network_config = {
+    master_ipv4_cidr_block   = "172.16.0.0/28"
+    cluster_ipv4_cidr_block  = "10.100.0.0/16"
+    services_ipv4_cidr_block = "10.101.0.0/16"
   }
 } 
