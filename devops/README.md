@@ -91,12 +91,11 @@ terragrunt run-all destroy
 - `staging`：测试环境，使用较小的资源配置和抢占式节点
 - `prod`：生产环境，使用更高性能的资源配置和稳定节点
 
-## 添加新环境
+## 环境管理
 
-要添加新环境（如`dev`），只需复制现有环境目录并调整配置：
+本项目仅维护两个环境：
 
-```bash
-cp -r environments/staging environments/dev
-```
+- `staging`：用于测试和预发布
+- `prod`：生产环境
 
-然后修改`environments/dev/terragrunt.hcl`和各模块的配置文件。 
+如需修改环境配置，请编辑对应环境目录下的 terragrunt.hcl 文件。 

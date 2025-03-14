@@ -16,7 +16,6 @@ on:
           - auto  # 自动根据分支选择
           - staging
           - prod
-          - dev
 
 env:
   PROJECT_ID: rare-attic-453703-a8
@@ -30,10 +29,8 @@ env:
   APP_NAME: app-server
   ENV_PROD: prod
   ENV_STAGING: staging
-  ENV_DEV: dev
   NAMESPACE_PROD: production
   NAMESPACE_STAGING: staging
-  NAMESPACE_DEV: development
   
 jobs:
   deploy:
@@ -59,12 +56,9 @@ jobs:
             if [[ "$BRANCH_NAME" == "master" ]]; then
               DEPLOY_ENV="prod"
               echo "检测到master分支，部署到生产环境"
-            elif [[ "$BRANCH_NAME" == "dev" ]]; then
-              DEPLOY_ENV="staging"
-              echo "检测到dev分支，部署到预发布环境"
             else
-              DEPLOY_ENV="dev"
-              echo "检测到其他分支，部署到开发环境"
+              DEPLOY_ENV="staging"
+              echo "检测到非master分支，部署到预发布环境"
             fi
           fi
           
@@ -74,10 +68,8 @@ jobs:
           # 根据环境设置命名空间
           if [[ "$DEPLOY_ENV" == "prod" ]]; then
             echo "NAMESPACE=production" >> $GITHUB_ENV
-          elif [[ "$DEPLOY_ENV" == "staging" ]]; then
-            echo "NAMESPACE=staging" >> $GITHUB_ENV
           else
-            echo "NAMESPACE=development" >> $GITHUB_ENV
+            echo "NAMESPACE=staging" >> $GITHUB_ENV
           fi
           
           # 根据环境设置GKE集群名称
@@ -116,10 +108,8 @@ jobs:
             # 设置镜像标签
             if [[ "${{ env.DEPLOY_ENV }}" == "prod" ]]; then
                 IMAGE_TAG="prod-$(date +%Y%m%d-%H%M%S)"
-            elif [[ "${{ env.DEPLOY_ENV }}" == "staging" ]]; then
-                IMAGE_TAG="staging-$(date +%Y%m%d-%H%M%S)"
             else
-                IMAGE_TAG="dev-$(date +%Y%m%d-%H%M%S)"
+                IMAGE_TAG="staging-$(date +%Y%m%d-%H%M%S)"
             fi
             echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
             

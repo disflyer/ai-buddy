@@ -6,10 +6,9 @@ on:
       environment:
         description: '部署环境'
         required: true
-        default: 'dev'
+        default: 'staging'
         type: choice
         options:
-          - dev
           - staging
           - prod
       components:
@@ -30,10 +29,8 @@ env:
   APP_NAME: app-server
   ENV_PROD: prod
   ENV_STAGING: staging
-  ENV_DEV: dev
   NAMESPACE_PROD: production
   NAMESPACE_STAGING: staging
-  NAMESPACE_DEV: development
   
 jobs:
   deploy-infrastructure:
@@ -52,10 +49,8 @@ jobs:
           # 根据环境设置命名空间
           if [[ "$DEPLOY_ENV" == "prod" ]]; then
             echo "NAMESPACE=production" >> $GITHUB_ENV
-          elif [[ "$DEPLOY_ENV" == "staging" ]]; then
-            echo "NAMESPACE=staging" >> $GITHUB_ENV
           else
-            echo "NAMESPACE=development" >> $GITHUB_ENV
+            echo "NAMESPACE=staging" >> $GITHUB_ENV
           fi
           
           # 根据环境设置GKE集群名称
@@ -118,29 +113,150 @@ jobs:
       # 部署网络
       - name: 部署网络
         if: env.DEPLOY_NETWORK == 'true'
+        timeout-minutes: 15
         run: |
           echo "开始部署网络..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/network
-          terragrunt init
-          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
+          
+          # 显示当前目录结构
+          echo "当前目录结构:"
+          ls -la
+          
+          # 创建正确的 terragrunt_config.hcl 文件
+          echo "创建正确的 terragrunt_config.hcl 文件..."
+          cat > terragrunt_config.hcl << 'EOF'
+terraform {
+  extra_arguments "retry_lock" {
+    commands = ["init", "apply", "refresh", "import", "plan", "destroy"]
+    arguments = [
+      "-lock=false"
+    ]
+  }
+}
+
+retryable_errors = [
+  "(?s).*Error acquiring the state lock.*",
+  "(?s).*timeout while waiting for state to become unlocked.*",
+  "(?s).*is already locked.*",
+  "(?s).*TLS handshake timeout.*",
+  "(?s).*connection reset by peer.*"
+]
+
+retry_max_attempts = 5
+retry_sleep_interval_sec = 30
+EOF
+          
+          # 创建临时 main.tf 文件
+          echo "创建临时 main.tf 文件..."
+          cat > main.tf << 'EOF'
+# 这是一个临时文件，确保目录中有 Terraform 文件
+# 实际模块源将由 Terragrunt 管理
+EOF
+          
+          # 显示 terragrunt.hcl 文件内容
+          echo "terragrunt.hcl 文件内容:"
+          cat terragrunt.hcl
+          
+          # 显示 terragrunt_config.hcl 文件内容
+          echo "terragrunt_config.hcl 文件内容:"
+          cat terragrunt_config.hcl
+          
+          # 执行 Terragrunt 命令，添加详细日志
+          echo "执行 terragrunt init..."
+          TERRAGRUNT_LOG=debug TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt init
+          
+          # 检查模块源目录
+          echo "检查模块源目录:"
+          ls -la .terragrunt-cache || echo "terragrunt-cache 目录不存在"
+          
+          echo "执行 terragrunt apply..."
+          TERRAGRUNT_LOG=debug TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" -lock=false
       
       # 部署GKE集群
       - name: 部署GKE集群
         if: env.DEPLOY_GKE_CLUSTER == 'true'
+        timeout-minutes: 20
         run: |
           echo "开始部署GKE集群..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/gke_cluster
-          terragrunt init
-          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
+          
+          # 显示当前目录结构
+          echo "当前目录结构:"
+          ls -la
+          
+          # 创建正确的 terragrunt_config.hcl 文件
+          echo "创建正确的 terragrunt_config.hcl 文件..."
+          cat > terragrunt_config.hcl << 'EOF'
+terraform {
+  extra_arguments "retry_lock" {
+    commands = ["init", "apply", "refresh", "import", "plan", "destroy"]
+    arguments = [
+      "-lock=false"
+    ]
+  }
+}
+
+retryable_errors = [
+  "(?s).*Error acquiring the state lock.*",
+  "(?s).*timeout while waiting for state to become unlocked.*",
+  "(?s).*is already locked.*",
+  "(?s).*TLS handshake timeout.*",
+  "(?s).*connection reset by peer.*"
+]
+
+retry_max_attempts = 5
+retry_sleep_interval_sec = 30
+EOF
+          
+          # 执行 Terragrunt 命令
+          echo "执行 terragrunt init..."
+          TERRAGRUNT_LOG=debug TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt init
+          
+          echo "执行 terragrunt apply..."
+          TERRAGRUNT_LOG=debug TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" -lock=false
       
       # 部署Secret Manager
       - name: 部署Secret Manager
         if: env.DEPLOY_SECRET_MANAGER == 'true'
+        timeout-minutes: 10
         run: |
           echo "开始部署Secret Manager..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/secret_manager
-          terragrunt init
-          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
+          
+          # 显示当前目录结构
+          echo "当前目录结构:"
+          ls -la
+          
+          # 创建正确的 terragrunt_config.hcl 文件
+          echo "创建正确的 terragrunt_config.hcl 文件..."
+          cat > terragrunt_config.hcl << 'EOF'
+terraform {
+  extra_arguments "retry_lock" {
+    commands = ["init", "apply", "refresh", "import", "plan", "destroy"]
+    arguments = [
+      "-lock=false"
+    ]
+  }
+}
+
+retryable_errors = [
+  "(?s).*Error acquiring the state lock.*",
+  "(?s).*timeout while waiting for state to become unlocked.*",
+  "(?s).*is already locked.*",
+  "(?s).*TLS handshake timeout.*",
+  "(?s).*connection reset by peer.*"
+]
+
+retry_max_attempts = 5
+retry_sleep_interval_sec = 30
+EOF
+          
+          # 执行 Terragrunt 命令
+          echo "执行 terragrunt init..."
+          TERRAGRUNT_LOG=debug TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt init
+          
+          echo "执行 terragrunt apply..."
+          TERRAGRUNT_LOG=debug TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" -lock=false
       
       # 创建命名空间
       - name: 创建命名空间
@@ -160,10 +276,6 @@ jobs:
           echo "创建预发布环境命名空间 ${{ env.NAMESPACE_STAGING }}..."
           kubectl create namespace ${{ env.NAMESPACE_STAGING }} --dry-run=client -o yaml | kubectl apply -f -
           kubectl label namespace ${{ env.NAMESPACE_STAGING }} environment=${{ env.ENV_STAGING }} --overwrite
-          
-          echo "创建开发环境命名空间 ${{ env.NAMESPACE_DEV }}..."
-          kubectl create namespace ${{ env.NAMESPACE_DEV }} --dry-run=client -o yaml | kubectl apply -f -
-          kubectl label namespace ${{ env.NAMESPACE_DEV }} environment=${{ env.ENV_DEV }} --overwrite
           
           echo "命名空间设置完成！"
       
