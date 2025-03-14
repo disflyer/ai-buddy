@@ -32,6 +32,17 @@ dependency "gke_cluster" {
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
+# 添加对Secret Manager的依赖
+dependency "secret_manager" {
+  config_path = "../secret_manager"
+  
+  # 配置依赖项输出的映射
+  mock_outputs = {
+    config_yaml_secret_name = "mock-secret-name"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
 # 生成Kubernetes provider配置
 generate "kubernetes_provider" {
   path      = "kubernetes_provider.tf"
@@ -64,4 +75,10 @@ inputs = {
     max_replicas    = 5
     target_cpu_util = 60
   }
+  
+  # 添加Secret Manager配置
+  config_yaml_secret_name = dependency.secret_manager.outputs.config_yaml_secret_name
+  
+  # 添加Google Cloud服务账号凭证
+  google_application_credentials = file("${get_terragrunt_dir()}/../../../service-account.json")
 } 

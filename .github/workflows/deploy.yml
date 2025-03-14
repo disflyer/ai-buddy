@@ -42,6 +42,12 @@ jobs:
           terragrunt init
           terragrunt apply -auto-approve
       
+      - name: 部署Secret Manager
+        run: |
+          cd devops/environments/staging/secret_manager
+          terragrunt init
+          terragrunt apply -auto-approve
+      
       - name: 部署应用服务
         run: |
           cd devops/environments/staging/app_server

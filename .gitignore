@@ -36,3 +36,4 @@ data/
 **/.terraform/
 **/terraform.tfstate*
 **/.terragrunt-cache/
+secrets/

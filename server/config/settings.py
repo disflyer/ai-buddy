@@ -11,8 +11,11 @@ def get_config_file():
     global default_config_file
     # 判断是否存在私有的配置文件
     config_file = default_config_file
+    
+    # 检查项目根目录下的data/.config.yaml
     if os.path.exists(get_project_dir() + "data/." + default_config_file):
         config_file = "data/." + default_config_file
+    
     return config_file
 
 

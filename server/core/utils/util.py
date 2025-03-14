@@ -9,6 +9,11 @@ import re
 
 def get_project_dir():
     """获取项目根目录"""
+    # 在Kubernetes环境中，应用程序运行在/app目录下
+    if os.path.exists('/app'):
+        return '/app/'
+    
+    # 本地开发环境
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + '/'
 
 

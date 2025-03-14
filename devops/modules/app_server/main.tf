@@ -71,6 +71,25 @@ resource "kubernetes_deployment" "app_server" {
               }
             }
           }
+
+          # 挂载配置文件
+          volume_mount {
+            name       = "config-volume"
+            mount_path = "/app/data"
+            read_only  = true
+          }
+        }
+
+        # 配置文件卷
+        volume {
+          name = "config-volume"
+          secret {
+            secret_name = var.config_yaml_secret_name
+            items {
+              key  = ".config.yaml"
+              path = ".config.yaml"
+            }
+          }
         }
 
         node_selector = {
@@ -78,6 +97,17 @@ resource "kubernetes_deployment" "app_server" {
         }
       }
     }
+  }
+}
+
+# 创建Google Cloud SDK凭证Secret
+resource "kubernetes_secret" "google_application_credentials" {
+  metadata {
+    name = "${var.env}-google-application-credentials"
+  }
+
+  data = {
+    "credentials.json" = var.google_application_credentials
   }
 }
 

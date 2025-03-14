@@ -72,3 +72,14 @@ variable "autoscaling" {
     target_cpu_util = 70
   }
 }
+
+variable "config_yaml_secret_name" {
+  description = "Kubernetes中配置文件Secret的名称"
+  type        = string
+}
+
+variable "google_application_credentials" {
+  description = "Google Cloud服务账号凭证JSON"
+  type        = string
+  sensitive   = true
+}
