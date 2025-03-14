@@ -139,7 +139,7 @@ jobs:
             # 配置Docker
             gcloud auth configure-docker ${{ env.GCR_HOST }} --quiet
             
-            # 构建镜像 - 使用 gcr-us-central1 仓库
+            # 构建镜像 - 使用正确的 Artifact Registry 路径格式
             docker build -t ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG ./server
             
             # 推送镜像
