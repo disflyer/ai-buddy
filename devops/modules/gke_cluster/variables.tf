@@ -56,20 +56,14 @@ variable "cluster_tier" {
 variable "maintenance_window" {
   description = "维护窗口配置"
   type = object({
-    day        = string
     start_time = string
   })
   default = {
-    day        = "SU"  # SUNDAY的缩写
-    start_time = "03:00"
-  }
-  validation {
-    condition     = contains(["MO", "TU", "WE", "TH", "FR", "SA", "SU"], var.maintenance_window.day)
-    error_message = "The maintenance window day must be one of: MO, TU, WE, TH, FR, SA, SU."
+    start_time = "03:00"  # 默认在凌晨3点开始维护
   }
   validation {
     condition     = can(regex("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", var.maintenance_window.start_time))
-    error_message = "The start time must be in 24-hour format (e.g., 03:00, 15:30)."
+    error_message = "维护窗口开始时间必须是24小时格式 (例如: 03:00, 15:30)。"
   }
 }
 
