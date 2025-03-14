@@ -1,0 +1,29 @@
+include {
+  path = "${get_repo_root()}/devops/terragrunt.hcl"
+}
+
+# 指定模块源
+terraform {
+  source = "../../../modules//network"
+}
+
+# 模块特定输入
+inputs = {
+  vpc_cidr = "10.20.0.0/16"
+  
+  subnet_config = {
+    primary_cidr  = "10.20.1.0/24"
+    pods_cidr     = "192.168.1.0/24"
+    services_cidr = "192.168.2.0/24"
+  }
+
+  firewall_rules = [
+    {
+      name          = "allow-http-debug"
+      direction     = "INGRESS"
+      ports         = ["80", "8080"]
+      source_ranges = ["0.0.0.0/0"]  # 仅测试环境允许临时开放
+      target_tags   = ["debug"]
+    }
+  ]
+} 
