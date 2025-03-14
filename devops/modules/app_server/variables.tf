@@ -1,50 +1,50 @@
 variable "env" {
-  description = "环境标识 (staging/prod)"
+  description = "环境名称，如prod、staging、dev"
   type        = string
+  validation {
+    condition     = contains(["prod", "staging", "dev"], var.env)
+    error_message = "环境名称必须是 prod、staging 或 dev"
+  }
 }
 
 variable "project_id" {
-  description = "GCP 项目ID"
+  description = "Google Cloud项目ID"
   type        = string
 }
 
 variable "region" {
-  description = "部署区域"
+  description = "Google Cloud区域"
   type        = string
-  default     = "us-central1"
 }
 
 variable "gke_cluster_name" {
-  description = "GKE 集群名称"
+  description = "GKE集群名称"
   type        = string
+}
+
+variable "replica_count" {
+  description = "应用服务副本数量"
+  type        = number
+  default     = 1
 }
 
 variable "image_repo" {
   description = "容器镜像仓库地址"
   type        = string
-  default     = "gcr.io"
 }
 
 variable "image_name" {
-  description = "应用容器镜像名称"
+  description = "容器镜像名称"
   type        = string
-  default     = "app-server"
 }
 
 variable "image_tag" {
   description = "容器镜像标签"
   type        = string
-  default     = "latest"
-}
-
-variable "replica_count" {
-  description = "初始副本数量"
-  type        = number
-  default     = 2
 }
 
 variable "resource_limits" {
-  description = "容器资源限制配置"
+  description = "资源限制配置"
   type = object({
     cpu    = string
     memory = string
@@ -60,32 +60,87 @@ variable "resource_limits" {
 variable "autoscaling" {
   description = "自动扩缩容配置"
   type = object({
-    enabled         = bool
-    min_replicas    = number
-    max_replicas    = number
-    target_cpu_util = number
+    enabled          = bool
+    min_replicas     = number
+    max_replicas     = number
+    target_cpu_util  = number
+    target_memory_util = number
   })
   default = {
-    enabled         = true
-    min_replicas    = 2
-    max_replicas    = 10
-    target_cpu_util = 70
+    enabled          = false
+    min_replicas     = 1
+    max_replicas     = 5
+    target_cpu_util  = 80
+    target_memory_util = 80
   }
 }
 
-variable "config_yaml_secret_name" {
-  description = "Kubernetes中配置文件Secret的名称"
+variable "gcp_service_account" {
+  description = "GCP服务账号邮箱"
   type        = string
 }
 
 variable "google_application_credentials" {
-  description = "Google Cloud服务账号凭证JSON"
+  description = "Google Cloud服务账号凭证JSON内容"
   type        = string
   sensitive   = true
 }
 
-variable "gcp_service_account" {
-  description = "GCP服务账号邮箱，用于Workload Identity"
+variable "config_yaml_secret_name" {
+  description = "配置文件Secret名称"
   type        = string
-  default     = "ai-buddy-gcs@rare-attic-453703-a8.iam.gserviceaccount.com"
+}
+
+variable "namespace" {
+  description = "Kubernetes命名空间"
+  type        = string
+  default     = "default"
+}
+
+variable "model_revision" {
+  description = "Hugging Face模型版本（分支、标签或提交哈希）"
+  type        = string
+  default     = ""
+}
+
+variable "enable_ingress" {
+  description = "是否创建Ingress资源"
+  type        = bool
+  default     = false
+}
+
+variable "ingress_host" {
+  description = "Ingress主机名"
+  type        = string
+  default     = ""
+}
+
+variable "enable_monitoring" {
+  description = "是否启用监控"
+  type        = bool
+  default     = true
+}
+
+variable "enable_network_policy" {
+  description = "是否启用网络策略"
+  type        = bool
+  default     = false
+}
+
+variable "pod_annotations" {
+  description = "Pod附加注解"
+  type        = map(string)
+  default     = {}
+}
+
+variable "pod_labels" {
+  description = "Pod附加标签"
+  type        = map(string)
+  default     = {}
+}
+
+variable "priority_class_name" {
+  description = "Pod优先级类名称"
+  type        = string
+  default     = ""
 }

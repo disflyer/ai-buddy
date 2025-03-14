@@ -37,7 +37,6 @@ EOF
 # 模块特定输入
 inputs = {
   env       = "staging"
-  project_id = "rare-attic-453703-a8"
   region    = "us-central1"
   
   # 允许GKE节点池的服务账号访问Secret

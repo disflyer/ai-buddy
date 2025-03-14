@@ -41,9 +41,57 @@ resource "google_container_node_pool" "primary_nodes" {
       workload   = "general"
     }
 
+    # 只有在启用GPU时才添加污点
+    dynamic "taint" {
+      for_each = var.cluster_tier.gpu_enabled ? [1] : []
+      content {
+        key    = "dedicated"
+        value  = "gpu"
+        effect = "NO_SCHEDULE"
+      }
+    }
+  }
+}
+
+# 如果需要，添加一个专用于生产环境的节点池
+resource "google_container_node_pool" "prod_nodes" {
+  count      = var.env == "prod" ? 1 : 0
+  name       = "prod-dedicated-pool"
+  location   = var.region
+  cluster    = google_container_cluster.primary.name
+  node_count = 2
+
+  autoscaling {
+    min_node_count = 2
+    max_node_count = 5
+  }
+
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
+  node_config {
+    machine_type = "e2-standard-4"
+    disk_size_gb = 100
+    disk_type    = "pd-ssd"
+    image_type   = "COS_CONTAINERD"
+
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+
+    service_account = google_service_account.gke_node.email
+    preemptible     = false
+
+    labels = {
+      env        = "prod"
+      workload   = "critical"
+    }
+
     taint {
       key    = "dedicated"
-      value  = "gpu"
+      value  = "prod"
       effect = "NO_SCHEDULE"
     }
   }

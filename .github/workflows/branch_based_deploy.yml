@@ -1,0 +1,182 @@
+name: 基于分支的自动部署
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+  workflow_dispatch:  # 保留手动触发选项
+    inputs:
+      environment:
+        description: '强制指定部署环境'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto  # 自动根据分支选择
+          - staging
+          - prod
+          - dev
+
+env:
+  PROJECT_ID: rare-attic-453703-a8
+  GKE_REGION: asia
+  
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 设置环境变量
+        run: |
+          # 获取当前分支名
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          echo "当前分支: $BRANCH_NAME"
+          
+          # 如果是手动触发且指定了非auto环境，则使用指定的环境
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.environment }}" != "auto" ]]; then
+            DEPLOY_ENV="${{ github.event.inputs.environment }}"
+            echo "使用手动指定的环境: $DEPLOY_ENV"
+          # 否则根据分支自动选择环境
+          else
+            # 根据分支设置部署环境
+            if [[ "$BRANCH_NAME" == "master" ]]; then
+              DEPLOY_ENV="prod"
+              echo "检测到master分支，部署到生产环境"
+            elif [[ "$BRANCH_NAME" == "dev" ]]; then
+              DEPLOY_ENV="staging"
+              echo "检测到dev分支，部署到预发布环境"
+            else
+              DEPLOY_ENV="dev"
+              echo "检测到其他分支，部署到开发环境"
+            fi
+          fi
+          
+          # 设置环境变量供后续步骤使用
+          echo "DEPLOY_ENV=$DEPLOY_ENV" >> $GITHUB_ENV
+          
+          # 根据环境设置命名空间
+          if [[ "$DEPLOY_ENV" == "prod" ]]; then
+            echo "NAMESPACE=production" >> $GITHUB_ENV
+          elif [[ "$DEPLOY_ENV" == "staging" ]]; then
+            echo "NAMESPACE=staging" >> $GITHUB_ENV
+          else
+            echo "NAMESPACE=development" >> $GITHUB_ENV
+          fi
+      
+      - name: 设置Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+      
+      - name: 安装Terragrunt
+        run: |
+          wget https://github.com/gruntwork-io/terragrunt/releases/download/v0.38.0/terragrunt_linux_amd64
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+      
+      - name: 设置Google Cloud凭证
+        run: |
+          echo '${{ secrets.GCP_SA_KEY }}' > devops/service-account.json
+      
+      - name: 设置Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+      
+      - name: 创建Kubernetes命名空间
+        run: |
+          # 加载项目配置
+          source secrets/project_config.sh
+          
+          # 执行创建命名空间脚本
+          bash secrets/create_namespaces.sh
+      
+      - name: 构建并推送Docker镜像
+        run: |
+          # 设置镜像标签
+          if [[ "${{ env.DEPLOY_ENV }}" == "prod" ]]; then
+            IMAGE_TAG="prod-$(date +%Y%m%d-%H%M%S)"
+          elif [[ "${{ env.DEPLOY_ENV }}" == "staging" ]]; then
+            IMAGE_TAG="staging-$(date +%Y%m%d-%H%M%S)"
+          else
+            IMAGE_TAG="dev-$(date +%Y%m%d-%H%M%S)"
+          fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          
+          # 配置Docker
+          gcloud auth configure-docker asia.gcr.io
+          
+          # 构建镜像
+          docker build -t asia.gcr.io/${{ env.PROJECT_ID }}/app-server:$IMAGE_TAG ./server
+          
+          # 推送镜像
+          docker push asia.gcr.io/${{ env.PROJECT_ID }}/app-server:$IMAGE_TAG
+          
+          # 设置latest标签
+          docker tag asia.gcr.io/${{ env.PROJECT_ID }}/app-server:$IMAGE_TAG asia.gcr.io/${{ env.PROJECT_ID }}/app-server:${{ env.DEPLOY_ENV }}-latest
+          docker push asia.gcr.io/${{ env.PROJECT_ID }}/app-server:${{ env.DEPLOY_ENV }}-latest
+      
+      - name: 部署网络
+        run: |
+          cd devops/environments/${{ env.DEPLOY_ENV }}/network
+          terragrunt init
+          terragrunt apply -auto-approve
+      
+      - name: 部署GKE集群
+        run: |
+          cd devops/environments/${{ env.DEPLOY_ENV }}/gke_cluster
+          terragrunt init
+          terragrunt apply -auto-approve
+      
+      - name: 部署Secret Manager
+        run: |
+          cd devops/environments/${{ env.DEPLOY_ENV }}/secret_manager
+          terragrunt init
+          terragrunt apply -auto-approve
+      
+      - name: 部署应用服务
+        run: |
+          # 创建临时变量文件，覆盖镜像标签
+          cat > override.tfvars << EOF
+          image_tag = "${{ env.IMAGE_TAG }}"
+          EOF
+          
+          cd devops/environments/${{ env.DEPLOY_ENV }}/app_server
+          terragrunt init
+          terragrunt apply -var-file=override.tfvars -auto-approve
+      
+      - name: 验证部署
+        run: |
+          # 获取GKE集群凭证
+          gcloud container clusters get-credentials $(terragrunt output -raw cluster_name) \
+            --region ${{ env.GKE_REGION }} \
+            --project ${{ env.PROJECT_ID }}
+          
+          # 检查部署状态
+          kubectl get deployments -n ${{ env.NAMESPACE }}
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          
+          # 获取服务IP
+          echo "应用服务访问地址: $(kubectl get service ${{ env.DEPLOY_ENV }}-app-server-lb -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+      
+      - name: 部署通知
+        if: always()
+        run: |
+          # 获取部署结果
+          if [[ $? -eq 0 ]]; then
+            DEPLOY_STATUS="成功"
+          else
+            DEPLOY_STATUS="失败"
+          fi
+          
+          echo "部署结果: $DEPLOY_STATUS"
+          echo "部署环境: ${{ env.DEPLOY_ENV }}"
+          echo "命名空间: ${{ env.NAMESPACE }}"
+          echo "镜像标签: ${{ env.IMAGE_TAG }}"
+          echo "触发分支: ${GITHUB_REF#refs/heads/}"

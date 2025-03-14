@@ -51,4 +51,19 @@ terraform {
     commands = ["apply", "plan", "destroy"]
     execute  = ["terraform", "init"]
   }
+}
+
+# 设置项目级变量
+locals {
+  # 从环境目录中获取环境名称
+  env = basename(get_terragrunt_dir())
+  
+  # 项目配置
+  project_id       = "rare-attic-453703-a8"
+  region           = "asia"
+  gke_cluster_name = "ai-buddy-cluster"
+  
+  # 应用配置
+  app_name  = "app-server"
+  image_repo = "asia.gcr.io"
 } 

@@ -38,6 +38,15 @@ resource "google_compute_router_nat" "nat" {
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 }
 
+# 添加环境标签到集群资源
+locals {
+  common_labels = merge({
+    environment = var.env
+    managed_by  = "terraform"
+    project     = var.project_id
+  }, var.resource_labels)
+}
+
 # 创建GKE集群
 resource "google_container_cluster" "primary" {
   name               = "${var.env}-gke-cluster"
@@ -46,6 +55,9 @@ resource "google_container_cluster" "primary" {
 
   network    = google_compute_network.vpc.name
   subnetwork = google_compute_subnetwork.subnet.name
+
+  # 添加环境标签
+  resource_labels = local.common_labels
 
   # 私有集群配置
   private_cluster_config {
@@ -56,46 +68,182 @@ resource "google_container_cluster" "primary" {
 
   # 维护窗口
   maintenance_policy {
-    daily_maintenance_window {
-      start_time = var.maintenance_window.start_time
+    recurring_window {
+      start_time = "${var.maintenance_window.start_time}:00Z"
+      end_time   = "${(tonumber(split(":", var.maintenance_window.start_time)[0]) + 4) % 24}:00:00Z"
+      recurrence = "FREQ=WEEKLY;BYDAY=${substr(var.maintenance_window.day, 0, 2)}"
     }
   }
 
   # 集群自动扩缩容
   cluster_autoscaling {
     enabled = true
+    
     resource_limits {
       resource_type = "cpu"
-      maximum       = 100
+      minimum       = 1
+      maximum       = var.env == "prod" ? 32 : 16
     }
+    
     resource_limits {
       resource_type = "memory"
-      maximum       = 512
+      minimum       = 2
+      maximum       = var.env == "prod" ? 128 : 64
     }
-    autoscaling_profile = var.cluster_tier.autoscaling_profile
+    
+    auto_provisioning_defaults {
+      disk_size = var.cluster_tier.disk_size_gb
+      disk_type = "pd-standard"
+      oauth_scopes = [
+        "https://www.googleapis.com/auth/devstorage.read_only",
+        "https://www.googleapis.com/auth/logging.write",
+        "https://www.googleapis.com/auth/monitoring",
+        "https://www.googleapis.com/auth/service.management.readonly",
+        "https://www.googleapis.com/auth/servicecontrol",
+        "https://www.googleapis.com/auth/trace.append",
+      ]
+      
+      management {
+        auto_repair  = true
+        auto_upgrade = true
+      }
+    }
   }
 
   # 安全加固
   release_channel {
-    channel = "REGULAR"
+    channel = var.env == "prod" ? "STABLE" : "REGULAR"
   }
 
+  # 启用工作负载身份联合
   workload_identity_config {
     workload_pool = "${var.project_id}.svc.id.goog"
   }
 
-  logging_config {
-    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
+  # 配置网络策略
+  network_policy {
+    enabled  = true
+    provider = "CALICO"
   }
 
-  monitoring_config {
-    enable_components = ["SYSTEM_COMPONENTS"]
-    managed_prometheus {
+  # 配置IP分配策略
+  ip_allocation_policy {
+    cluster_ipv4_cidr_block  = "/14"
+    services_ipv4_cidr_block = "/20"
+  }
+
+  # 配置日志和监控
+  logging_service    = "logging.googleapis.com/kubernetes"
+  monitoring_service = "monitoring.googleapis.com/kubernetes"
+
+  # 配置附加组件
+  addons_config {
+    http_load_balancing {
+      disabled = false
+    }
+    horizontal_pod_autoscaling {
+      disabled = false
+    }
+    network_policy_config {
+      disabled = false
+    }
+    gcp_filestore_csi_driver_config {
       enabled = true
     }
+    gce_persistent_disk_csi_driver_config {
+      enabled = true
+    }
+  }
+
+  # 配置节点池
+  node_config {
+    # 基本配置
+    machine_type = var.cluster_tier.machine_type
+    disk_size_gb = var.cluster_tier.disk_size_gb
+    disk_type    = "pd-standard"
+    
+    # OAuth作用域
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/devstorage.read_only",
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring",
+      "https://www.googleapis.com/auth/service.management.readonly",
+      "https://www.googleapis.com/auth/servicecontrol",
+      "https://www.googleapis.com/auth/trace.append",
+    ]
+    
+    # 标签和元数据
+    labels = local.common_labels
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
+    
+    # 工作负载身份
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+    
+    # 抢占式虚拟机
+    spot = var.cluster_tier.preemptible
+    
+    # 安全设置
+    shielded_instance_config {
+      enable_secure_boot          = true
+      enable_integrity_monitoring = true
+    }
+  }
+  
+  # 配置节点自动修复和升级
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+  
+  # 配置自动扩缩容
+  autoscaling {
+    min_node_count = var.cluster_tier.min_node_count
+    max_node_count = var.cluster_tier.max_node_count
+  }
+  
+  # 配置升级设置
+  upgrade_settings {
+    max_surge       = 1
+    max_unavailable = 0
+  }
+
+  # 配置垂直Pod自动扩缩容
+  vertical_pod_autoscaling {
+    enabled = true
   }
 
   depends_on = [
     google_compute_router_nat.nat
   ]
+}
+
+# 输出集群信息
+output "cluster_name" {
+  description = "GKE集群名称"
+  value       = google_container_cluster.primary.name
+}
+
+output "cluster_endpoint" {
+  description = "GKE集群API服务器端点"
+  value       = google_container_cluster.primary.endpoint
+}
+
+output "cluster_ca_certificate" {
+  description = "GKE集群CA证书"
+  value       = base64decode(google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
+  sensitive   = true
+}
+
+output "cluster_location" {
+  description = "GKE集群位置"
+  value       = google_container_cluster.primary.location
+}
+
+output "workload_identity_pool" {
+  description = "工作负载身份池"
+  value       = "${var.project_id}.svc.id.goog"
 }
