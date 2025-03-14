@@ -24,6 +24,10 @@ dependency "network" {
 inputs = {
   vpc_name = dependency.network.outputs.vpc_name
   
+  # 环境特定的网络资源创建控制
+  # 可以被 TF_VAR_create_network_resources 环境变量覆盖
+  create_network_resources = get_env("TF_VAR_create_network_resources", "false")
+  
   cluster_tier = {
     machine_type        = "e2-standard-2"  # 测试环境使用经济机型
     disk_size_gb        = 50
