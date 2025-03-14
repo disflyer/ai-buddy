@@ -16,6 +16,11 @@ on:
         required: true
         default: 'network,gke_cluster,secret_manager'
         type: string
+      import_existing:
+        description: '是否导入现有资源'
+        required: true
+        default: true
+        type: boolean
 
 env:
   PROJECT_ID: rare-attic-453703-a8
@@ -119,6 +124,18 @@ jobs:
           else
             echo "警告：当前服务账号可能没有权限启用API。如果后续部署失败，请手动在GCP控制台启用必要API。"
           fi
+
+      # 导入现有资源
+      - name: 导入现有资源
+        if: ${{ github.event.inputs.import_existing == 'true' }}
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          ENV: ${{ env.DEPLOY_ENV }}
+          REGION: ${{ env.GKE_REGION }}
+        run: |
+          echo "开始导入现有资源..."
+          chmod +x devops/scripts/import_resources.sh
+          ./devops/scripts/import_resources.sh || echo "警告：部分资源导入可能失败，这是正常的，继续执行..."
       
       # 部署网络
       - name: 部署网络

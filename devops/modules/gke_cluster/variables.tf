@@ -110,3 +110,9 @@ variable "kubernetes_version" {
   type        = string
   default     = "1.27"  # 使用稳定版本
 }
+
+variable "create_network_resources" {
+  description = "是否创建网络相关资源（NAT Router等）。如果设置为false，则假设资源已存在"
+  type        = bool
+  default     = true
+}

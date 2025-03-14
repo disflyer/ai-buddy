@@ -42,6 +42,11 @@ EOF
 # 全局变量
 inputs = {
   terraform_version = "1.0.0"
+  
+  # 网络资源创建控制
+  # 默认为false，表示使用现有资源
+  # 在新环境部署时，可以通过环境变量 TF_VAR_create_network_resources=true 覆盖
+  create_network_resources = get_env("TF_VAR_create_network_resources", "false")
 }
 
 # 设置Terragrunt工作目录
