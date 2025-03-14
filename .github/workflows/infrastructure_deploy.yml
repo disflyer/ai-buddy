@@ -1,4 +1,4 @@
-name: 应用部署
+name: 基础设施部署
 
 on:
   push:
