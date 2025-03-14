@@ -25,7 +25,7 @@ dependency "gke_cluster" {
   
   # 配置依赖项输出的映射
   mock_outputs = {
-    cluster_name = "mock-cluster"
+    cluster_name = "ai-buddy-cluster"
     endpoint     = "https://mock-endpoint"
     cluster_ca_certificate = "mock-cert"
   }
@@ -50,7 +50,7 @@ generate "kubernetes_provider" {
   contents  = <<EOF
 provider "kubernetes" {
   host                   = "https://${dependency.gke_cluster.outputs.endpoint}"
-  cluster_ca_certificate = base64decode(data.google_container_cluster.target_cluster.master_auth[0].cluster_ca_certificate)
+  cluster_ca_certificate = base64decode("${dependency.gke_cluster.outputs.cluster_ca_certificate}")
   token                  = data.google_client_config.default.access_token
 }
 EOF

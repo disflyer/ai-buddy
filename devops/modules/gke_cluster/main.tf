@@ -49,7 +49,7 @@ locals {
 
 # 创建GKE集群
 resource "google_container_cluster" "primary" {
-  name               = "ai-buddy-app-cluster"
+  name               = "ai-buddy-cluster"
   location           = var.region
   initial_node_count = 1
 

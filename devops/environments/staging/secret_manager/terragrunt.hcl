@@ -14,7 +14,7 @@ dependency "gke_cluster" {
   
   # 配置依赖项输出的映射
   mock_outputs = {
-    cluster_name = "mock-cluster"
+    cluster_name = "ai-buddy-cluster"
     endpoint     = "https://mock-endpoint"
     cluster_ca_certificate = "mock-cert"
   }

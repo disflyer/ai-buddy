@@ -82,7 +82,7 @@ jobs:
           fi
           
           # 根据环境设置GKE集群名称
-          echo "GKE_CLUSTER_NAME=${DEPLOY_ENV}-gke-cluster" >> $GITHUB_ENV
+          echo "GKE_CLUSTER_NAME=ai-buddy-cluster" >> $GITHUB_ENV
       
       - name: 设置Terraform
         uses: hashicorp/setup-terraform@v1
