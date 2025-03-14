@@ -1,6 +1,5 @@
-# 包含环境配置
 include {
-  path = "../terragrunt.hcl"
+  path = "${get_repo_root()}/devops/terragrunt.hcl"
 }
 
 # 指定模块源
