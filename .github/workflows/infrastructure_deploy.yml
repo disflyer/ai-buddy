@@ -115,32 +115,128 @@ jobs:
           echo "设置当前项目为: ${{ env.PROJECT_ID }}"
           gcloud config set project ${{ env.PROJECT_ID }}
       
+      # 检查并清理状态锁
+      - name: 检查并清理状态锁
+        run: |
+          echo "检查并清理状态锁..."
+          
+          # 设置变量
+          BUCKET_NAME="tfstate-rare-attic"
+          COMPONENTS=("network" "gke_cluster" "secret_manager")
+          
+          for COMPONENT in "${COMPONENTS[@]}"; do
+            LOCK_FILE="environments/${{ env.DEPLOY_ENV }}/$COMPONENT/default.tflock"
+            
+            echo "检查 ${{ env.DEPLOY_ENV }} 环境的 $COMPONENT 组件锁文件..."
+            
+            # 检查锁文件是否存在
+            if gsutil -q stat gs://$BUCKET_NAME/$LOCK_FILE 2>/dev/null; then
+              echo "锁文件存在，正在删除..."
+              gsutil rm gs://$BUCKET_NAME/$LOCK_FILE
+              echo "锁文件删除成功！"
+            else
+              echo "锁文件不存在或无法访问，继续执行。"
+            fi
+          done
+      
       # 部署网络
       - name: 部署网络
         if: env.DEPLOY_NETWORK == 'true'
+        timeout-minutes: 15
         run: |
           echo "开始部署网络..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/network
-          terragrunt init
-          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
+          
+          # 创建 terragrunt-cache 目录（如果不存在）
+          mkdir -p .terragrunt-cache
+          
+          # 创建 Terragrunt 配置文件，启用重试机制
+          cat > terragrunt_config.hcl << EOF
+          # 启用重试机制
+          retryable_errors = [
+            "(?s).*Error acquiring the state lock.*",
+            "(?s).*timeout while waiting for state to become unlocked.*",
+            "(?s).*is already locked.*",
+            "(?s).*TLS handshake timeout.*",
+            "(?s).*connection reset by peer.*"
+          ]
+          
+          retry_max_attempts = 5
+          retry_sleep_interval_sec = 30
+          EOF
+          
+          # 执行 Terragrunt 命令
+          echo "执行 terragrunt init..."
+          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt init
+          
+          echo "执行 terragrunt apply..."
+          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
       
       # 部署GKE集群
       - name: 部署GKE集群
         if: env.DEPLOY_GKE_CLUSTER == 'true'
+        timeout-minutes: 20
         run: |
           echo "开始部署GKE集群..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/gke_cluster
-          terragrunt init
-          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
+          
+          # 创建 terragrunt-cache 目录（如果不存在）
+          mkdir -p .terragrunt-cache
+          
+          # 创建 Terragrunt 配置文件，启用重试机制
+          cat > terragrunt_config.hcl << EOF
+          # 启用重试机制
+          retryable_errors = [
+            "(?s).*Error acquiring the state lock.*",
+            "(?s).*timeout while waiting for state to become unlocked.*",
+            "(?s).*is already locked.*",
+            "(?s).*TLS handshake timeout.*",
+            "(?s).*connection reset by peer.*"
+          ]
+          
+          retry_max_attempts = 5
+          retry_sleep_interval_sec = 30
+          EOF
+          
+          # 执行 Terragrunt 命令
+          echo "执行 terragrunt init..."
+          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt init
+          
+          echo "执行 terragrunt apply..."
+          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
       
       # 部署Secret Manager
       - name: 部署Secret Manager
         if: env.DEPLOY_SECRET_MANAGER == 'true'
+        timeout-minutes: 10
         run: |
           echo "开始部署Secret Manager..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/secret_manager
-          terragrunt init
-          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
+          
+          # 创建 terragrunt-cache 目录（如果不存在）
+          mkdir -p .terragrunt-cache
+          
+          # 创建 Terragrunt 配置文件，启用重试机制
+          cat > terragrunt_config.hcl << EOF
+          # 启用重试机制
+          retryable_errors = [
+            "(?s).*Error acquiring the state lock.*",
+            "(?s).*timeout while waiting for state to become unlocked.*",
+            "(?s).*is already locked.*",
+            "(?s).*TLS handshake timeout.*",
+            "(?s).*connection reset by peer.*"
+          ]
+          
+          retry_max_attempts = 5
+          retry_sleep_interval_sec = 30
+          EOF
+          
+          # 执行 Terragrunt 命令
+          echo "执行 terragrunt init..."
+          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt init
+          
+          echo "执行 terragrunt apply..."
+          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
       
       # 创建命名空间
       - name: 创建命名空间
