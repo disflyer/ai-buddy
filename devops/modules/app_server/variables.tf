@@ -8,6 +8,17 @@ variable "project_id" {
   type        = string
 }
 
+variable "region" {
+  description = "部署区域"
+  type        = string
+  default     = "us-central1"
+}
+
+variable "gke_cluster_name" {
+  description = "GKE 集群名称"
+  type        = string
+}
+
 variable "image_repo" {
   description = "容器镜像仓库地址"
   type        = string

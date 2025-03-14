@@ -1,15 +1,11 @@
 # 获取GKE集群信息
 data "google_container_cluster" "target_cluster" {
-  name     = "${var.env}-gke-appserver"
-  location = "us-central1"
+  name     = var.gke_cluster_name
+  location = var.region
 }
 
-# 配置Kubernetes provider
-provider "kubernetes" {
-  host                   = "https://${data.google_container_cluster.target_cluster.endpoint}"
-  cluster_ca_certificate = base64decode(data.google_container_cluster.target_cluster.master_auth[0].cluster_ca_certificate)
-  token                  = data.google_client_config.default.access_token
-}
+# 移除本地 Kubernetes provider 配置
+# 现在依赖于调用方传递的 provider 配置
 
 data "google_client_config" "default" {}
 

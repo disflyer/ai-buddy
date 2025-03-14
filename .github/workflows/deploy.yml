@@ -1,0 +1,63 @@
+name: 部署到Google Cloud
+
+on:
+  workflow_run:
+    workflows: ["构建并推送Docker镜像"]
+    types:
+      - completed
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 设置Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+      
+      - name: 安装Terragrunt
+        run: |
+          wget https://github.com/gruntwork-io/terragrunt/releases/download/v0.38.0/terragrunt_linux_amd64
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+      
+      - name: 设置Google Cloud凭证
+        run: |
+          echo '${{ secrets.GCP_SA_KEY }}' > devops/service-account.json
+      
+      - name: 部署网络
+        run: |
+          cd devops/environments/staging/network
+          terragrunt init
+          terragrunt apply -auto-approve
+      
+      - name: 部署GKE集群
+        run: |
+          cd devops/environments/staging/gke_cluster
+          terragrunt init
+          terragrunt apply -auto-approve
+      
+      - name: 部署应用服务
+        run: |
+          cd devops/environments/staging/app_server
+          terragrunt init
+          terragrunt apply -auto-approve
+      
+      - name: 验证部署
+        run: |
+          # 获取GKE集群凭证
+          gcloud container clusters get-credentials $(terragrunt output -raw cluster_name) \
+            --region us-central1 \
+            --project rare-attic-453703-a8
+          
+          # 检查部署状态
+          kubectl get deployments
+          kubectl get pods
+          
+          # 获取服务IP
+          echo "应用服务访问地址: $(kubectl get service staging-app-server-lb -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"

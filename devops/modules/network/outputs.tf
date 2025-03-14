@@ -9,12 +9,12 @@ output "subnet_self_link" {
 }
 
 output "pod_cidr" {
-  description = GKE Pod CIDR范围
+  description = "GKE Pod CIDR范围"
   value       = var.subnet_config.pods_cidr
 }
 
 output "service_cidr" {
-  description = GKE Service CIDR范围
+  description = "GKE Service CIDR范围"
   value       = var.subnet_config.services_cidr
 }
 

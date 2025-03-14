@@ -1,0 +1,47 @@
+name: 构建并推送Docker镜像
+
+on:
+  push:
+    branches: [ main, dev ]
+    paths:
+      - 'server/**'
+      - '.github/workflows/build-push.yml'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 设置Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: rare-attic-453703-a8
+      
+      - name: 配置Docker使用gcloud
+        run: gcloud auth configure-docker asia.gcr.io
+      
+      - name: 构建并推送镜像
+        run: |
+          cd server
+          # 使用短SHA作为版本标签
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          
+          # 构建镜像
+          docker build -t asia.gcr.io/rare-attic-453703-a8/app-server:$SHORT_SHA .
+          
+          # 添加环境标签
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            ENV_TAG="prod-latest"
+          else
+            ENV_TAG="staging-latest"
+          fi
+          
+          # 标记镜像
+          docker tag asia.gcr.io/rare-attic-453703-a8/app-server:$SHORT_SHA asia.gcr.io/rare-attic-453703-a8/app-server:$ENV_TAG
+          
+          # 推送镜像
+          docker push asia.gcr.io/rare-attic-453703-a8/app-server:$SHORT_SHA
+          docker push asia.gcr.io/rare-attic-453703-a8/app-server:$ENV_TAG

@@ -26,3 +26,13 @@ data/
 *.pt
 *.log
 **/tmp/
+# 敏感凭证文件
+**/service-account.json
+**/*.pem
+**/*.key
+**/*.p12
+.env
+.env.*
+**/.terraform/
+**/terraform.tfstate*
+**/.terragrunt-cache/
