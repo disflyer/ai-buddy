@@ -1,6 +1,6 @@
 # 包含环境配置
 include {
-  path = find_in_parent_folders()
+  path = "../terragrunt.hcl"
 }
 
 # 指定模块源

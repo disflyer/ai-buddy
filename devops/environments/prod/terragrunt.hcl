@@ -1,6 +1,6 @@
 # 包含根配置
 include {
-  path = find_in_parent_folders()
+  path = "${get_repo_root()}/devops/terragrunt.hcl"
 }
 
 # 环境特定变量

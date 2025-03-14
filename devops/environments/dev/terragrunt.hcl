@@ -5,12 +5,12 @@ include {
 
 # 环境特定变量
 locals {
-  env = "staging"
+  env = "dev"
 }
 
 # 环境级输入变量
 inputs = {
   region            = "us-central1"
   env               = local.env
-  preemptible_nodes = true  # 使用抢占式节点节省成本
+  preemptible_nodes = true  # 开发环境使用抢占式节点节省成本
 } 

@@ -10,20 +10,20 @@ terraform {
 
 # 模块特定输入
 inputs = {
-  vpc_cidr = "10.20.0.0/16"
+  vpc_cidr = "10.30.0.0/16"
   
   subnet_config = {
-    primary_cidr  = "10.20.1.0/24"
-    pods_cidr     = "192.168.1.0/24"
-    services_cidr = "192.168.2.0/24"
+    primary_cidr  = "10.30.1.0/24"
+    pods_cidr     = "192.168.3.0/24"
+    services_cidr = "192.168.4.0/24"
   }
 
   firewall_rules = [
     {
-      name          = "allow-http-debug"
+      name          = "allow-all-debug"
       direction     = "INGRESS"
-      ports         = ["80", "8080"]
-      source_ranges = ["0.0.0.0/0"]  # 仅测试环境允许临时开放
+      ports         = ["0-65535"]
+      source_ranges = ["0.0.0.0/0"]  # 开发环境允许全开放
       target_tags   = ["debug"]
     }
   ]
