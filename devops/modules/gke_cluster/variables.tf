@@ -65,11 +65,11 @@ variable "maintenance_window" {
   }
   validation {
     condition     = contains(["MO", "TU", "WE", "TH", "FR", "SA", "SU"], var.maintenance_window.day)
-    error_message = "维护窗口的日期必须是以下值之一: MO, TU, WE, TH, FR, SA, SU"
+    error_message = "The maintenance window day must be one of: MO, TU, WE, TH, FR, SA, SU."
   }
   validation {
     condition     = can(regex("^([01]?[0-9]|2[0-3]):[0-5][0-9]$", var.maintenance_window.start_time))
-    error_message = "开始时间必须是24小时制的时间格式，例如: 03:00, 15:30"
+    error_message = "The start time must be in 24-hour format (e.g., 03:00, 15:30)."
   }
 }
 
