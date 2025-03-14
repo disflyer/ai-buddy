@@ -46,6 +46,12 @@ def main():
     try:
         # 日志
         setup_logging()
+        
+        # 初始化音频设备以触发权限请求
+        import pyaudio
+        audio = pyaudio.PyAudio()
+        audio.terminate()
+        
         # 创建并运行应用程序
         app = Application.get_instance()
 

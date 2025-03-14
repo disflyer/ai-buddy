@@ -97,16 +97,31 @@ class ConnectionHandler:
 
     async def handle_connection(self, ws):
         try:
-            # 获取并验证headers
+            # 获取 URL 查询参数
+            query_string = ws.request.query_string.decode('utf-8') if ws.request.query_string else None
+            params = {}
+            if query_string:
+                from urllib.parse import parse_qs
+                params = parse_qs(query_string)
+
+            # 获取并预处理 headers
             self.headers = dict(ws.request.headers)
+            
+            # 如果 headers 中没有必要的认证信息，从 URL 参数中获取并添加到 headers
+            if not self.headers.get("device-id") and params.get("device-id"):
+                self.headers["device-id"] = params["device-id"][0]
+            
+            if not self.headers.get("authorization") and params.get("token"):
+                self.headers["authorization"] = f"Bearer {params['token'][0]}"
+
             # 获取客户端ip地址
             client_ip = ws.remote_address[0]
-            self.logger.bind(tag=TAG).info(f"{client_ip} conn - Headers: {self.headers}")
+            self.logger.bind(tag=TAG).info(f"{client_ip} conn - Headers: {self.headers}, Query: {query_string}")
 
             # 进行认证
             await self.auth.authenticate(self.headers)
 
-            device_id = self.headers.get("device-id", None)
+            device_id = self.headers.get("device-id")
             self.memory.init_memory(device_id, self.llm)
             self.intent.set_llm(self.llm)
 

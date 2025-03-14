@@ -1,0 +1,63 @@
+variable "env" {
+  description = "环境标识 (staging/prod)"
+  type        = string
+}
+
+variable "project_id" {
+  description = "GCP 项目ID"
+  type        = string
+}
+
+variable "image_repo" {
+  description = "容器镜像仓库地址"
+  type        = string
+  default     = "gcr.io"
+}
+
+variable "image_name" {
+  description = "应用容器镜像名称"
+  type        = string
+  default     = "app-server"
+}
+
+variable "image_tag" {
+  description = "容器镜像标签"
+  type        = string
+  default     = "latest"
+}
+
+variable "replica_count" {
+  description = "初始副本数量"
+  type        = number
+  default     = 2
+}
+
+variable "resource_limits" {
+  description = "容器资源限制配置"
+  type = object({
+    cpu    = string
+    memory = string
+    gpu    = number
+  })
+  default = {
+    cpu    = "2"
+    memory = "4Gi"
+    gpu    = 0
+  }
+}
+
+variable "autoscaling" {
+  description = "自动扩缩容配置"
+  type = object({
+    enabled         = bool
+    min_replicas    = number
+    max_replicas    = number
+    target_cpu_util = number
+  })
+  default = {
+    enabled         = true
+    min_replicas    = 2
+    max_replicas    = 10
+    target_cpu_util = 70
+  }
+}
