@@ -87,6 +87,12 @@ jobs:
           version: '>= 363.0.0'
           install_components: 'kubectl,gke-gcloud-auth-plugin'
       
+      # 配置 Docker 认证
+      - name: 配置 Docker 认证
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          gcloud auth configure-docker gcr.io --quiet
+      
       # 启用必要的API服务
       - name: 启用必要的API服务
         run: |
