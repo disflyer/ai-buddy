@@ -103,11 +103,20 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
       
+      - name: 验证Google Cloud身份验证
+        run: |
+          # 验证身份验证状态
+          gcloud auth list
+          gcloud config list
+          
+          # 确保项目已设置
+          gcloud config set project ${{ env.PROJECT_ID }}
+          
+          # 确保启用了必要的API（假设API已经手动启用）
+          echo "跳过API启用步骤，假设API已经手动启用"
+      
       - name: 创建Kubernetes命名空间
         run: |
-          # 确保启用了必要的API
-          gcloud services enable container.googleapis.com
-          
           # 获取GKE集群凭证
           gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
             --region ${{ env.GKE_REGION }} \
@@ -140,12 +149,8 @@ jobs:
           fi
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
           
-          # 确保启用了Artifact Registry API
-          gcloud services enable artifactregistry.googleapis.com
-          gcloud services enable containerregistry.googleapis.com
-          
           # 配置Docker
-          gcloud auth configure-docker ${{ env.GCR_HOST }}
+          gcloud auth configure-docker ${{ env.GCR_HOST }} --quiet
           
           # 构建镜像
           docker build -t ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}:$IMAGE_TAG ./server
@@ -189,7 +194,7 @@ jobs:
       - name: 验证部署
         run: |
           # 获取GKE集群凭证
-          gcloud container clusters get-credentials $(terragrunt output -raw cluster_name) \
+          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
             --region ${{ env.GKE_REGION }} \
             --project ${{ env.PROJECT_ID }}
           
