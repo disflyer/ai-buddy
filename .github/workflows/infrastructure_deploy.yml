@@ -115,282 +115,32 @@ jobs:
           echo "设置当前项目为: ${{ env.PROJECT_ID }}"
           gcloud config set project ${{ env.PROJECT_ID }}
       
-      # 修复所有 Terragrunt 配置
-      - name: 修复所有 Terragrunt 配置
-        run: |
-          echo "修复所有 Terragrunt 配置..."
-          
-          # 创建修复脚本
-          cat > fix_all_terragrunt_configs.sh << 'EOF'
-          #!/bin/bash
-          
-          # 设置环境和组件
-          ENVIRONMENTS=("dev" "staging" "prod")
-          COMPONENTS=("network" "gke_cluster" "secret_manager" "app_server")
-          
-          # 显示当前工作目录
-          echo "当前工作目录: $(pwd)"
-          
-          # 检查 devops 目录是否存在
-          if [ ! -d "devops" ]; then
-            echo "错误: devops 目录不存在"
-            exit 1
-          fi
-          
-          # 修复根目录的 terragrunt.hcl 文件
-          ROOT_TERRAGRUNT="devops/terragrunt.hcl"
-          if [ -f "$ROOT_TERRAGRUNT" ]; then
-            echo "修复根目录的 terragrunt.hcl 文件..."
-            
-            # 备份原始文件
-            cp "$ROOT_TERRAGRUNT" "${ROOT_TERRAGRUNT}.bak"
-            
-            # 添加禁用状态锁的配置
-            if ! grep -q "lock = false" "$ROOT_TERRAGRUNT"; then
-              sed -i 's/credentials = "${get_repo_root()}\/devops\/service-account.json"/credentials = "${get_repo_root()}\/devops\/service-account.json"\n    lock = false  # 禁用状态锁\n    skip_bucket_creation = true  # 跳过创建存储桶/g' "$ROOT_TERRAGRUNT"
-              echo "已添加禁用状态锁的配置"
-            else
-              echo "已存在禁用状态锁的配置"
-            fi
-            
-            echo "根目录的 terragrunt.hcl 文件修复完成"
-          else
-            echo "警告: 根目录的 terragrunt.hcl 文件不存在"
-          fi
-          
-          # 遍历所有环境和组件
-          for ENV in "${ENVIRONMENTS[@]}"; do
-            for COMPONENT in "${COMPONENTS[@]}"; do
-              MODULE_DIR="devops/environments/$ENV/$COMPONENT"
-              
-              # 检查目录是否存在
-              if [ ! -d "$MODULE_DIR" ]; then
-                echo "跳过: 目录 $MODULE_DIR 不存在"
-                continue
-              fi
-              
-              # 检查 terragrunt.hcl 文件是否存在
-              if [ ! -f "$MODULE_DIR/terragrunt.hcl" ]; then
-                echo "跳过: 文件 $MODULE_DIR/terragrunt.hcl 不存在"
-                continue
-              fi
-              
-              echo "修复 $ENV 环境的 $COMPONENT 组件配置..."
-              
-              # 备份原始文件
-              cp "$MODULE_DIR/terragrunt.hcl" "$MODULE_DIR/terragrunt.hcl.bak"
-              
-              # 修复 include 路径 - 使用 Ubuntu 兼容的 sed 语法
-              sed -i 's|path = "${get_repo_root()}/devops/terragrunt.hcl"|path = "../terragrunt.hcl"|g' "$MODULE_DIR/terragrunt.hcl"
-              
-              # 创建 .terragrunt-cache 目录（如果不存在）
-              mkdir -p "$MODULE_DIR/.terragrunt-cache"
-              
-              # 创建 terragrunt_config.hcl 文件
-              cat > "$MODULE_DIR/terragrunt_config.hcl" << EOFINNER
-          # 禁用状态锁
-          disable_init_lock = true
-          
-          # 启用重试机制
-          retryable_errors = [
-            "(?s).*Error acquiring the state lock.*",
-            "(?s).*timeout while waiting for state to become unlocked.*",
-            "(?s).*is already locked.*",
-            "(?s).*TLS handshake timeout.*",
-            "(?s).*connection reset by peer.*"
-          ]
-          
-          retry_max_attempts = 5
-          retry_sleep_interval_sec = 30
-          EOFINNER
-              
-              echo "$ENV 环境的 $COMPONENT 组件配置修复完成"
-            done
-          done
-          
-          echo "所有 Terragrunt 配置修复完成！"
-          exit 0
-          EOF
-          
-          # 添加执行权限
-          chmod +x fix_all_terragrunt_configs.sh
-          
-          # 执行修复脚本
-          ./fix_all_terragrunt_configs.sh
-          
-          echo "所有 Terragrunt 配置修复完成！"
-      
-      # 检查并清理状态锁
-      - name: 检查并清理状态锁
-        run: |
-          echo "检查并清理状态锁..."
-          
-          # 设置变量
-          BUCKET_NAME="tfstate-rare-attic"
-          COMPONENTS=("network" "gke_cluster" "secret_manager")
-          
-          for COMPONENT in "${COMPONENTS[@]}"; do
-            LOCK_FILE="environments/${{ env.DEPLOY_ENV }}/$COMPONENT/default.tflock"
-            
-            echo "检查 ${{ env.DEPLOY_ENV }} 环境的 $COMPONENT 组件锁文件..."
-            
-            # 检查锁文件是否存在
-            if gsutil -q stat gs://$BUCKET_NAME/$LOCK_FILE 2>/dev/null; then
-              echo "锁文件存在，正在删除..."
-              gsutil rm gs://$BUCKET_NAME/$LOCK_FILE
-              echo "锁文件删除成功！"
-            else
-              echo "锁文件不存在或无法访问，继续执行。"
-            fi
-          done
-      
-      # 修复 Terragrunt 模块源路径
-      - name: 修复 Terragrunt 模块源路径
-        if: env.DEPLOY_NETWORK == 'true'
-        run: |
-          echo "修复 Terragrunt 模块源路径..."
-          
-          # 设置变量
-          ENV="${{ env.DEPLOY_ENV }}"
-          MODULE_DIR="devops/environments/$ENV/network"
-          
-          echo "修复 $ENV 环境的网络模块配置..."
-          
-          # 检查目录是否存在
-          if [ ! -d "$MODULE_DIR" ]; then
-            echo "错误: 目录 $MODULE_DIR 不存在"
-            ls -la devops/environments/
-            exit 1
-          fi
-          
-          # 检查 terragrunt.hcl 文件是否存在
-          if [ ! -f "$MODULE_DIR/terragrunt.hcl" ]; then
-            echo "错误: 文件 $MODULE_DIR/terragrunt.hcl 不存在"
-            ls -la "$MODULE_DIR"
-            exit 1
-          fi
-          
-          # 显示原始文件内容
-          echo "原始 terragrunt.hcl 文件内容:"
-          cat "$MODULE_DIR/terragrunt.hcl"
-          
-          # 备份原始文件
-          cp "$MODULE_DIR/terragrunt.hcl" "$MODULE_DIR/terragrunt.hcl.bak"
-          
-          # 修复 include 路径 - 使用 Ubuntu 兼容的 sed 语法
-          sed -i 's|path = "${get_repo_root()}/devops/terragrunt.hcl"|path = "../terragrunt.hcl"|g' "$MODULE_DIR/terragrunt.hcl"
-          
-          # 不修改双斜杠，保持 Terraform 模块引用的正确性
-          
-          # 显示修改后的文件内容
-          echo "修改后的 terragrunt.hcl 文件内容:"
-          cat "$MODULE_DIR/terragrunt.hcl"
-          
-          # 创建 .terragrunt-cache 目录（如果不存在）
-          mkdir -p "$MODULE_DIR/.terragrunt-cache"
-          
-          # 在模块源目录中检查文件
-          echo "检查模块源目录中的文件:"
-          ls -la devops/modules/network/
-          
-          echo "Terragrunt 模块源路径修复完成！"
-      
       # 部署网络
       - name: 部署网络
         if: env.DEPLOY_NETWORK == 'true'
-        timeout-minutes: 15
         run: |
           echo "开始部署网络..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/network
-          
-          # 显示当前目录结构
-          echo "当前目录结构:"
-          ls -la
-          
-          # 显示 terragrunt.hcl 文件内容
-          echo "terragrunt.hcl 文件内容:"
-          cat terragrunt.hcl
-          
-          # 显示 terragrunt_config.hcl 文件内容
-          echo "terragrunt_config.hcl 文件内容:"
-          cat terragrunt_config.hcl
-          
-          # 执行 Terragrunt 命令，添加详细日志
-          echo "执行 terragrunt init..."
-          TERRAGRUNT_LOG=debug TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt init
-          
-          # 检查模块源目录
-          echo "检查模块源目录:"
-          ls -la .terragrunt-cache || echo "terragrunt-cache 目录不存在"
-          
-          echo "执行 terragrunt apply..."
-          TERRAGRUNT_LOG=debug TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" -lock=false
+          terragrunt init
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
       
       # 部署GKE集群
       - name: 部署GKE集群
         if: env.DEPLOY_GKE_CLUSTER == 'true'
-        timeout-minutes: 20
         run: |
           echo "开始部署GKE集群..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/gke_cluster
-          
-          # 创建 terragrunt-cache 目录（如果不存在）
-          mkdir -p .terragrunt-cache
-          
-          # 创建 Terragrunt 配置文件，启用重试机制
-          cat > terragrunt_config.hcl << EOF
-          # 启用重试机制
-          retryable_errors = [
-            "(?s).*Error acquiring the state lock.*",
-            "(?s).*timeout while waiting for state to become unlocked.*",
-            "(?s).*is already locked.*",
-            "(?s).*TLS handshake timeout.*",
-            "(?s).*connection reset by peer.*"
-          ]
-          
-          retry_max_attempts = 5
-          retry_sleep_interval_sec = 30
-          EOF
-          
-          # 执行 Terragrunt 命令
-          echo "执行 terragrunt init..."
-          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt init
-          
-          echo "执行 terragrunt apply..."
-          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
+          terragrunt init
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
       
       # 部署Secret Manager
       - name: 部署Secret Manager
         if: env.DEPLOY_SECRET_MANAGER == 'true'
-        timeout-minutes: 10
         run: |
           echo "开始部署Secret Manager..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/secret_manager
-          
-          # 创建 terragrunt-cache 目录（如果不存在）
-          mkdir -p .terragrunt-cache
-          
-          # 创建 Terragrunt 配置文件，启用重试机制
-          cat > terragrunt_config.hcl << EOF
-          # 启用重试机制
-          retryable_errors = [
-            "(?s).*Error acquiring the state lock.*",
-            "(?s).*timeout while waiting for state to become unlocked.*",
-            "(?s).*is already locked.*",
-            "(?s).*TLS handshake timeout.*",
-            "(?s).*connection reset by peer.*"
-          ]
-          
-          retry_max_attempts = 5
-          retry_sleep_interval_sec = 30
-          EOF
-          
-          # 执行 Terragrunt 命令
-          echo "执行 terragrunt init..."
-          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt init
-          
-          echo "执行 terragrunt apply..."
-          TERRAGRUNT_CONFIG="terragrunt_config.hcl" terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
+          terragrunt init
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}"
       
       # 创建命名空间
       - name: 创建命名空间
