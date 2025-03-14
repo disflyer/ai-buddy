@@ -29,6 +29,9 @@ locals {
   project_id = local.root_config.locals.project_id
   region     = local.root_config.locals.region
   env        = "staging"  # 明确设置环境
+  
+  # 定义集群名称
+  cluster_name = "ai-buddy-cluster"
 }
 
 # 模块特定输入
@@ -46,7 +49,7 @@ inputs = {
   create_network_resources = get_env("TF_VAR_create_network_resources", "false")
   
   # 集群配置
-  cluster_name = local.root_config.locals.gke_cluster_name
+  cluster_name = local.cluster_name
   
   cluster_tier = {
     machine_type        = "e2-standard-2"  # 测试环境使用经济机型
