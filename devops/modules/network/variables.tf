@@ -49,3 +49,9 @@ variable "firewall_rules" {
   }))
   default = []
 }
+
+variable "enable_private_services" {
+  description = "是否启用私有服务连接（用于私有API访问或托管服务）"
+  type        = bool
+  default     = false
+}

@@ -1,101 +1,135 @@
-# 基础设施即代码 (IaC) - Terragrunt
+# AI Buddy 基础设施与部署说明
 
-本项目使用Terragrunt管理多环境基础设施，实现了配置的DRY（不重复自己）原则和模块间依赖管理。
-
-## 目录结构
+## 项目结构
 
 ```
 devops/
-├── terragrunt.hcl                # 根配置，定义共享设置
-├── environments/
-│   ├── staging/                  # 测试环境
-│   │   ├── terragrunt.hcl        # 环境级配置
-│   │   ├── network/              # 网络模块
-│   │   ├── gke_cluster/          # GKE集群模块
-│   │   └── app_server/           # 应用服务模块
-│   └── prod/                     # 生产环境
-│       ├── terragrunt.hcl
-│       ├── network/
-│       ├── gke_cluster/
-│       └── app_server/
-└── modules/                      # Terraform模块
-    ├── network/
-    ├── gke_cluster/
-    └── app_server/
+├── environments/           # 环境特定配置
+│   ├── prod/               # 生产环境
+│   │   ├── network/        # 网络模块配置
+│   │   ├── gke_cluster/    # GKE集群配置
+│   │   ├── secret_manager/ # Secret Manager配置
+│   │   └── app_server/     # 应用服务配置
+│   └── staging/            # 预发布环境
+│       ├── network/        # 网络模块配置
+│       ├── gke_cluster/    # GKE集群配置
+│       ├── secret_manager/ # Secret Manager配置
+│       └── app_server/     # 应用服务配置
+├── modules/                # Terraform模块
+│   ├── network/            # 网络模块
+│   ├── gke_cluster/        # GKE集群模块
+│   ├── secret_manager/     # Secret Manager模块
+│   └── app_server/         # 应用服务模块
+├── terragrunt.hcl          # 根Terragrunt配置
+└── service-account.json    # GCP服务账号凭证
 ```
 
-## 前置条件
+## 访问配置
 
-1. 安装Terraform (>= 1.0.0)
-2. 安装Terragrunt
-3. 配置GCP服务账号凭证 (`service-account.json`)
+### 直接通过IP访问 (当前配置)
 
-## 使用方法
+目前服务配置为可通过负载均衡器的IP地址直接访问：
 
-### 初始化和规划单个模块
+- **HTTP访问**: `http://<负载均衡器IP>`
+- **WebSocket访问**: `ws://<负载均衡器IP>:8080/ws`
+
+通过IP访问时，不会进行TLS加密。如需安全连接，请配置域名和TLS证书。
+
+### 域名结构 (未来配置)
+
+当需要通过域名访问时，可使用以下域名结构：
+
+| 环境 | 域名 | WebSocket路径 |
+|-----|------|------------|
+| 预发布环境 | api-staging.aibuddy.cn | wss://api-staging.aibuddy.cn/ws |
+| 生产环境 | api.aibuddy.cn | wss://api.aibuddy.cn/ws |
+
+启用域名访问需修改配置文件中的 `enable_tls` 和 `enable_ingress` 参数。
+
+## 部署指南
+
+### 基础设施部署
+
+在部署应用前，需要先部署基础设施：
 
 ```bash
-# 进入模块目录
-cd environments/staging/network
+# 部署预发布环境基础设施
+cd devops/environments/staging/network
+terragrunt apply
 
-# 初始化
-terragrunt init
+cd ../gke_cluster
+terragrunt apply
 
-# 查看计划
-terragrunt plan
+cd ../secret_manager
+terragrunt apply
 
-# 应用更改
+# 部署生产环境基础设施流程类似
+```
+
+### 应用部署
+
+应用服务部署：
+
+```bash
+# 部署预发布环境应用
+cd devops/environments/staging/app_server
+terragrunt apply
+
+# 部署生产环境应用
+cd devops/environments/prod/app_server
 terragrunt apply
 ```
 
-### 初始化和规划整个环境
+## 获取负载均衡器IP
+
+部署完成后，可以通过以下命令获取服务IP地址：
 
 ```bash
-# 进入环境目录
-cd environments/staging
+# 获取预发布环境IP
+kubectl get svc -n staging staging-app-server-lb -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 
-# 初始化所有模块
-terragrunt run-all init
-
-# 查看所有模块的计划
-terragrunt run-all plan
-
-# 应用所有模块的更改
-terragrunt run-all apply
+# 获取生产环境IP
+kubectl get svc -n production prod-app-server-lb -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
 
-### 销毁资源
+## 测试连接
 
+您可以使用以下方法测试连接：
+
+### HTTP测试
 ```bash
-# 销毁单个模块
-cd environments/staging/app_server
-terragrunt destroy
+# 测试预发布环境
+curl http://<预发布环境IP>/health
 
-# 销毁整个环境
-cd environments/staging
-terragrunt run-all destroy
+# 测试生产环境
+curl http://<生产环境IP>/health
 ```
 
-## 依赖关系
+### WebSocket测试
+```javascript
+// 浏览器控制台测试预发布环境
+const socket = new WebSocket('ws://<预发布环境IP>:8080/ws');
+socket.onopen = () => console.log('连接成功');
+socket.onmessage = (event) => console.log('收到消息:', event.data);
+```
 
-模块间的依赖关系通过Terragrunt的`dependency`块自动管理：
+## 安全注意事项
 
-1. 网络模块无依赖
-2. GKE集群模块依赖网络模块
-3. 应用服务模块依赖GKE集群模块
+1. IP直接访问不提供TLS加密，请勿在公开环境传输敏感数据
+2. 防火墙规则已配置为仅允许必要的端口
+3. 生产环境使用高优先级Pod保证服务稳定性
 
-## 环境特定配置
+## 运维指南
 
-每个环境都有自己的配置文件，可以根据需要调整参数：
+### 监控
 
-- `staging`：测试环境，使用较小的资源配置和抢占式节点
-- `prod`：生产环境，使用更高性能的资源配置和稳定节点
+- 应用服务已配置监控
+- 可通过Google Cloud Console或Kubernetes Dashboard查看监控数据
 
-## 环境管理
+### 故障排除
 
-本项目仅维护两个环境：
-
-- `staging`：用于测试和预发布
-- `prod`：生产环境
-
-如需修改环境配置，请编辑对应环境目录下的 terragrunt.hcl 文件。 
+如果通过IP访问失败，请检查：
+1. 负载均衡器是否已成功创建并分配IP
+2. 防火墙规则是否允许80和8080端口
+3. 服务Pod是否正常运行
+4. 网络策略是否限制了访问 

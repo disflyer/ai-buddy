@@ -24,6 +24,16 @@ inputs = {
       ports         = ["80", "8080"]
       source_ranges = ["0.0.0.0/0"]  # 仅测试环境允许临时开放
       target_tags   = ["debug"]
+    },
+    {
+      name          = "allow-websocket"
+      direction     = "INGRESS"
+      ports         = ["443", "8443"]  # WSS协议端口
+      source_ranges = ["0.0.0.0/0"]
+      target_tags   = ["app-server"]
     }
   ]
+  
+  # 是否启用私有服务连接 - 一般只在需要私有API访问或托管服务时使用
+  enable_private_services = false
 } 

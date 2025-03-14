@@ -1,9 +1,40 @@
+# 确保必要的 API 已启用
+resource "google_project_service" "required_apis" {
+  for_each = toset([
+    "compute.googleapis.com",           # Compute Engine API
+    "servicenetworking.googleapis.com", # Service Networking API
+    "cloudresourcemanager.googleapis.com", # Cloud Resource Manager API
+    "iam.googleapis.com",               # Identity and Access Management API
+    "container.googleapis.com"          # Kubernetes Engine API
+  ])
+  
+  project = var.project_id
+  service = each.key
+  
+  # 禁用服务时不要删除资源
+  disable_dependent_services = false
+  disable_on_destroy         = false
+  
+  timeouts {
+    create = "30m"
+    update = "40m"
+  }
+}
+
+# 确保所有其他资源依赖 API 启用
+locals {
+  dependency_on_apis = google_project_service.required_apis
+}
+
 # 创建VPC
 resource "google_compute_network" "vpc" {
   name                    = "${var.env}-vpc"
   auto_create_subnetworks = false
   routing_mode            = "REGIONAL"
   description             = "VPC for ${var.env} environment"
+  
+  # 添加对API启用的依赖
+  depends_on = [local.dependency_on_apis]
 }
 
 # 创建子网
@@ -23,25 +54,42 @@ resource "google_compute_subnetwork" "primary" {
     ip_cidr_range = var.subnet_config.services_cidr
   }
 
+  # 根据环境优化日志配置
   log_config {
-    aggregation_interval = "INTERVAL_10_MIN"
-    flow_sampling        = 0.5
-    metadata             = "INCLUDE_ALL_METADATA"
+    aggregation_interval = var.env == "prod" ? "INTERVAL_5_MIN" : "INTERVAL_15_MIN"
+    flow_sampling        = var.env == "prod" ? 0.5 : 0.1  # 非生产环境减少采样
+    metadata             = var.env == "prod" ? "INCLUDE_ALL_METADATA" : "EXCLUDE_ALL_METADATA"
   }
+  
+  # 添加对API启用的依赖
+  depends_on = [local.dependency_on_apis, google_compute_network.vpc]
 }
 
-# 保留内部DNS名称
+# 私有DNS和服务连接 - 仅在需要私有API访问或托管服务时使用
 resource "google_compute_global_address" "dns_internal" {
+  count = var.enable_private_services ? 1 : 0
+  
   name          = "${var.env}-dns-internal"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
   network       = google_compute_network.vpc.id
+  
+  # 添加对API启用的依赖
+  depends_on = [local.dependency_on_apis]
 }
 
-# 启用私有服务连接
+# 启用私有服务连接 - 仅在需要私有API访问或托管服务时使用
 resource "google_service_networking_connection" "private_vpc" {
+  count = var.enable_private_services ? 1 : 0
+  
   network                 = google_compute_network.vpc.id
   service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.dns_internal.name]
+  reserved_peering_ranges = [google_compute_global_address.dns_internal[0].name]
+  
+  # 添加对API启用的依赖
+  depends_on = [
+    local.dependency_on_apis,
+    google_compute_global_address.dns_internal
+  ]
 }

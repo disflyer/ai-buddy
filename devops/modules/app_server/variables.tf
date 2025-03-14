@@ -144,3 +144,39 @@ variable "priority_class_name" {
   type        = string
   default     = ""
 }
+
+variable "internal_lb" {
+  description = "是否使用内部负载均衡器"
+  type        = boolean
+  default     = true
+}
+
+variable "enable_tls" {
+  description = "是否启用TLS"
+  type        = boolean
+  default     = false
+}
+
+variable "tls_cert_path" {
+  description = "TLS证书路径（如果使用自定义证书）"
+  type        = string
+  default     = ""
+}
+
+variable "tls_key_path" {
+  description = "TLS密钥路径（如果使用自定义证书）"
+  type        = string
+  default     = ""
+}
+
+variable "app_domain" {
+  description = "应用域名"
+  type        = string
+  default     = ""
+}
+
+variable "managed_cert_name" {
+  description = "Google管理的SSL证书名称（如果使用）"
+  type        = string
+  default     = ""
+}

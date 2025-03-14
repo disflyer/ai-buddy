@@ -77,6 +77,7 @@ inputs = {
     min_replicas    = 3
     max_replicas    = 10
     target_cpu_util = 70
+    target_memory_util = 80
   }
   
   # 添加Secret Manager配置
@@ -87,4 +88,20 @@ inputs = {
   
   # 添加GCP服务账号
   gcp_service_account = "terraform-deployer@rare-attic-453703-a8.iam.gserviceaccount.com"
+  
+  # WebSocket配置 - 直接IP访问
+  internal_lb = false  # 使用外部负载均衡器
+  
+  # 禁用TLS和Ingress，使用IP直接访问
+  enable_tls = false
+  enable_ingress = false
+  
+  # 保留域名配置以便将来使用
+  # app_domain = "api.aibuddy.cn"
+  
+  # 生产环境额外配置
+  priority_class_name = "high-priority"  # 高优先级调度
+  
+  # 启用监控
+  enable_monitoring = true
 } 

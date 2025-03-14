@@ -384,7 +384,11 @@ resource "kubernetes_service" "lb_service" {
     namespace = var.namespace
     labels    = local.app_labels
     annotations = {
-      "cloud.google.com/load-balancer-type" = "Internal" # 内部负载均衡
+      "cloud.google.com/load-balancer-type" = var.internal_lb ? "Internal" : "External"
+      # 如果启用TLS，则添加协议注解
+      "cloud.google.com/app-protocols"      = var.enable_tls ? "{\"https\": \"HTTPS\", \"wss\": \"HTTPS\"}" : null
+      # WebSocket需要更长的超时时间
+      "cloud.google.com/connection-draining-timeout-sec" = "300"
     }
   }
 
@@ -394,10 +398,38 @@ resource "kubernetes_service" "lb_service" {
       env = var.env
     }
 
+    # 常规HTTP端口
     port {
       name        = "http"
       port        = 80
       target_port = 8000
+    }
+    
+    # HTTPS端口
+    dynamic "port" {
+      for_each = var.enable_tls ? [1] : []
+      content {
+        name        = "https"
+        port        = 443
+        target_port = 8000
+      }
+    }
+    
+    # WebSocket端口 - 即使没有TLS也提供
+    port {
+      name        = "ws"  # WebSocket
+      port        = 8080
+      target_port = 8000  # 应用中处理WebSocket的端口
+    }
+    
+    # 安全WebSocket端口
+    dynamic "port" {
+      for_each = var.enable_tls ? [1] : []
+      content {
+        name        = "wss"  # WebSocket Secure
+        port        = 8443
+        target_port = 8000
+      }
     }
 
     type = "LoadBalancer"
@@ -486,6 +518,87 @@ resource "kubernetes_secret" "auth_secrets" {
   }
 
   depends_on = [kubernetes_namespace.app_namespace]
+}
+
+# TLS证书配置 - 使用Let's Encrypt或手动导入的证书
+resource "kubernetes_secret" "tls_cert" {
+  count = var.enable_tls ? 1 : 0
+  
+  metadata {
+    name      = "${var.env}-${local.app_name}-tls"
+    namespace = var.namespace
+  }
+
+  data = {
+    "tls.crt" = var.tls_cert_path != "" ? file(var.tls_cert_path) : ""
+    "tls.key" = var.tls_key_path != "" ? file(var.tls_key_path) : ""
+  }
+
+  type = "kubernetes.io/tls"
+  
+  depends_on = [kubernetes_namespace.app_namespace]
+}
+
+# 添加Ingress资源，支持WebSocket路由
+resource "kubernetes_ingress_v1" "app_ingress" {
+  count = var.enable_ingress ? 1 : 0
+  
+  metadata {
+    name      = "${var.env}-${local.app_name}-ingress"
+    namespace = var.namespace
+    annotations = {
+      "kubernetes.io/ingress.class"                         = "gce"
+      "kubernetes.io/ingress.allow-http"                    = "true"
+      "ingress.gcp.kubernetes.io/pre-shared-cert"           = var.managed_cert_name
+      "nginx.ingress.kubernetes.io/proxy-read-timeout"      = "3600"
+      "nginx.ingress.kubernetes.io/proxy-send-timeout"      = "3600"
+      "nginx.ingress.kubernetes.io/websocket-services"      = "${var.env}-${local.app_name}-lb"
+      # 禁用SSL重定向，因为我们已经在负载均衡器处理了SSL
+      "nginx.ingress.kubernetes.io/ssl-redirect"            = "false"
+      # 允许大文件上传
+      "nginx.ingress.kubernetes.io/proxy-body-size"         = "50m"
+    }
+  }
+
+  spec {
+    tls {
+      hosts       = [var.app_domain]
+      secret_name = var.enable_tls ? kubernetes_secret.tls_cert[0].metadata[0].name : ""
+    }
+
+    rule {
+      host = var.app_domain
+      http {
+        path {
+          path      = "/"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = kubernetes_service.lb_service.metadata[0].name
+              port {
+                number = 80
+              }
+            }
+          }
+        }
+        
+        path {
+          path      = "/ws"  # WebSocket路径
+          path_type = "Prefix"
+          backend {
+            service {
+              name = kubernetes_service.lb_service.metadata[0].name
+              port {
+                number = 8443
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  depends_on = [kubernetes_service.lb_service]
 }
 
 # 输出服务信息
