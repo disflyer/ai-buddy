@@ -7,8 +7,8 @@ variable "env" {
   description = "环境标识(staging/prod)"
   type        = string
   validation {
-    condition     = contains(["staging", "prod"], var.env)
-    error_message = "Allowed values: staging, prod"
+    condition     = contains(["staging", "prod", "dev"], var.env)
+    error_message = "环境变量的值必须是 staging、prod 或 dev。"
   }
 }
 
