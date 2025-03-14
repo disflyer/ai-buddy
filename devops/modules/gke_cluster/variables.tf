@@ -108,7 +108,7 @@ variable "cluster_network_config" {
 variable "kubernetes_version" {
   description = "Kubernetes版本"
   type        = string
-  default     = "1.27"  # 使用稳定版本
+  default     = "1.31.5-gke.1233000"  # 使用当前最新的稳定版本
 }
 
 variable "create_network_resources" {

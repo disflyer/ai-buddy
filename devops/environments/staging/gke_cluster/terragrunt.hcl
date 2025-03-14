@@ -50,6 +50,7 @@ inputs = {
   
   # 集群配置
   cluster_name = local.cluster_name
+  kubernetes_version = "1.31.5-gke.1233000"  # 指定最新的稳定版本
   
   cluster_tier = {
     machine_type        = "e2-standard-2"  # 测试环境使用经济机型
