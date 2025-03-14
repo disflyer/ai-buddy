@@ -48,6 +48,29 @@ devops/
 
 ## 部署指南
 
+### 前置条件
+
+在开始部署基础设施前，请确保以下API服务已在GCP项目中启用：
+
+1. Compute Engine API (`compute.googleapis.com`)
+2. Service Networking API (`servicenetworking.googleapis.com`)
+3. Cloud Resource Manager API (`cloudresourcemanager.googleapis.com`)
+4. Identity and Access Management API (`iam.googleapis.com`)
+5. Kubernetes Engine API (`container.googleapis.com`)
+
+您可以通过Google Cloud Console的"API和服务"部分启用这些API，或使用以下gcloud命令：
+
+```bash
+# 启用所需的API
+gcloud services enable compute.googleapis.com \
+    servicenetworking.googleapis.com \
+    cloudresourcemanager.googleapis.com \
+    iam.googleapis.com \
+    container.googleapis.com
+```
+
+确保执行此命令的账号拥有足够的权限。
+
 ### 基础设施部署
 
 在部署应用前，需要先部署基础设施：

@@ -87,6 +87,24 @@ jobs:
           version: '>= 363.0.0'
           install_components: 'kubectl,gke-gcloud-auth-plugin'
       
+      # 启用必要的API服务
+      - name: 启用必要的API服务
+        run: |
+          echo "启用基础设施部署所需的API服务..."
+          # 检查当前用户是否有权限启用服务
+          if gcloud services list --available | grep compute.googleapis.com; then
+            echo "正在尝试启用必要的API..."
+            # 尝试启用所需API
+            gcloud services enable compute.googleapis.com \
+              servicenetworking.googleapis.com \
+              cloudresourcemanager.googleapis.com \
+              iam.googleapis.com \
+              container.googleapis.com \
+              serviceusage.googleapis.com || echo "警告：部分API可能需要手动在控制台启用"
+          else
+            echo "警告：当前服务账号可能没有权限启用API。如果后续部署失败，请手动在GCP控制台启用必要API。"
+          fi
+      
       # 部署网络
       - name: 部署网络
         if: env.DEPLOY_NETWORK == 'true'

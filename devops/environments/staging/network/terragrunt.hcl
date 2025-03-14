@@ -1,39 +1,57 @@
-include {
-  path = "${get_repo_root()}/devops/terragrunt.hcl"
-}
-
 # 指定模块源
 terraform {
   source = "../../../modules//network"
 }
 
-# 模块特定输入
+# 包含环境级别配置
+include {
+  path = "../terragrunt.hcl"
+}
+
+# 覆盖输入变量，自定义staging环境网络
 inputs = {
-  vpc_cidr = "10.20.0.0/16"
+  env    = "staging"
+  region = "us-central1"
+  project_id = "rare-attic-453703-a8"
   
   subnet_config = {
-    primary_cidr  = "10.20.1.0/24"
-    pods_cidr     = "192.168.1.0/24"
-    services_cidr = "192.168.2.0/24"
+    primary_cidr  = "10.128.0.0/20"
+    pods_cidr     = "192.168.0.0/18"
+    services_cidr = "192.168.64.0/18"
   }
-
+  
+  # 禁用私有服务连接，避免需要额外API权限
+  enable_private_services = false
+  
+  # 预发布环境防火墙规则
   firewall_rules = [
     {
-      name          = "allow-http-debug"
-      direction     = "INGRESS"
-      ports         = ["80", "8080"]
-      source_ranges = ["0.0.0.0/0"]  # 仅测试环境允许临时开放
-      target_tags   = ["debug"]
+      name        = "staging-allow-internal"
+      direction   = "INGRESS"
+      source_ranges = ["10.0.0.0/8"]
+      target_tags = []
+      ports       = ["0-65535"]
     },
     {
-      name          = "allow-websocket"
-      direction     = "INGRESS"
-      ports         = ["443", "8443"]  # WSS协议端口
+      name        = "staging-allow-http"
+      direction   = "INGRESS"
       source_ranges = ["0.0.0.0/0"]
-      target_tags   = ["app-server"]
+      target_tags = ["http-server"]
+      ports       = ["80", "443", "8080", "8443"]
+    },
+    {
+      name         = "staging-allow-websocket"
+      direction    = "INGRESS"
+      source_ranges = ["0.0.0.0/0"]
+      target_tags  = ["ws-server"]
+      ports        = ["8080", "8443"] 
+    },
+    {
+      name         = "staging-allow-ssh"
+      direction    = "INGRESS"
+      source_ranges = ["35.235.240.0/20"] # Google Cloud IAP 范围
+      target_tags  = []
+      ports        = ["22"]
     }
   ]
-  
-  # 是否启用私有服务连接 - 一般只在需要私有API访问或托管服务时使用
-  enable_private_services = false
 } 
