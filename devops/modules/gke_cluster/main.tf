@@ -221,23 +221,6 @@ resource "google_container_cluster" "primary" {
   ]
 }
 
-# 输出集群信息
-output "cluster_name" {
-  description = "GKE集群名称"
-  value       = google_container_cluster.primary.name
-}
-
-output "cluster_endpoint" {
-  description = "GKE集群API服务器端点"
-  value       = google_container_cluster.primary.endpoint
-}
-
-output "cluster_ca_certificate" {
-  description = "GKE集群CA证书"
-  value       = base64decode(google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
-  sensitive   = true
-}
-
 output "cluster_location" {
   description = "GKE集群位置"
   value       = google_container_cluster.primary.location
@@ -245,5 +228,5 @@ output "cluster_location" {
 
 output "workload_identity_pool" {
   description = "工作负载身份池"
-  value       = "${var.project_id}.svc.id.goog"
+  value       = google_container_cluster.primary.workload_identity_config[0].workload_pool
 }
