@@ -1,4 +1,4 @@
-name: 基于分支的自动部署
+name: 应用部署
 
 on:
   push:
@@ -22,7 +22,6 @@ env:
   PROJECT_ID: rare-attic-453703-a8
   GKE_REGION: us-central1
   GCR_HOST: us-central1-docker.pkg.dev
-  # 移除固定的集群名称，将在每个环境中动态设置
   TERRAFORM_SA_NAME: terraform-deployer
   CI_SA_NAME: github-actions-ci
   CONFIG_SECRET_NAME: .config.yaml
@@ -82,20 +81,8 @@ jobs:
           fi
           
           # 根据环境设置GKE集群名称
-          echo "GKE_CLUSTER_NAME=ai-buddy-cluster" >> $GITHUB_ENV
+          echo "GKE_CLUSTER_NAME=${DEPLOY_ENV}-gke-cluster" >> $GITHUB_ENV
       
-      - name: 设置Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: 1.0.0
-      
-      - name: 安装Terragrunt
-        run: |
-          wget https://github.com/gruntwork-io/terragrunt/releases/download/v0.38.0/terragrunt_linux_amd64
-          chmod +x terragrunt_linux_amd64
-          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
-      
-      # 使用 google-github-actions/auth 进行身份验证
       - name: 设置Google Cloud身份验证
         id: auth
         uses: google-github-actions/auth@v1
@@ -139,7 +126,7 @@ jobs:
             # 配置Docker
             gcloud auth configure-docker ${{ env.GCR_HOST }} --quiet
             
-            # 构建镜像 - 使用正确的 Artifact Registry 路径格式
+            # 构建镜像
             docker build -t ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG ./server
             
             # 推送镜像
@@ -148,50 +135,43 @@ jobs:
             # 设置latest标签
             docker tag ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:$IMAGE_TAG ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
             docker push ${{ env.GCR_HOST }}/${{ env.PROJECT_ID }}/gcr-us-central1/${{ env.APP_NAME }}:${{ env.DEPLOY_ENV }}-latest
-      # 先部署基础设施
-      - name: 部署网络
-        run: |
-          cd devops/environments/${{ env.DEPLOY_ENV }}/network
-          terragrunt init
-          terragrunt apply -auto-approve
       
-      - name: 部署GKE集群
+      # 检查GKE集群是否存在
+      - name: 检查GKE集群是否存在
+        id: check_cluster
         run: |
-          cd devops/environments/${{ env.DEPLOY_ENV }}/gke_cluster
-          terragrunt init
-          terragrunt apply -auto-approve
+          if gcloud container clusters describe ${{ env.GKE_CLUSTER_NAME }} --region ${{ env.GKE_REGION }} --project ${{ env.PROJECT_ID }} &> /dev/null; then
+            echo "GKE集群 ${{ env.GKE_CLUSTER_NAME }} 已存在"
+            echo "cluster_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "GKE集群 ${{ env.GKE_CLUSTER_NAME }} 不存在，请先运行基础设施部署工作流"
+            echo "cluster_exists=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
       
-      - name: 部署Secret Manager
-        run: |
-          cd devops/environments/${{ env.DEPLOY_ENV }}/secret_manager
-          terragrunt init
-          terragrunt apply -auto-approve
-      
-      # 在基础设施部署后获取集群凭证并创建命名空间
-      - name: 获取集群凭证并创建命名空间
+      # 获取集群凭证
+      - name: 获取集群凭证
+        if: steps.check_cluster.outputs.cluster_exists == 'true'
         run: |
           # 获取GKE集群凭证
           echo "获取GKE集群凭证..."
           gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
             --region ${{ env.GKE_REGION }} \
             --project ${{ env.PROJECT_ID }}
-          
-          # 创建命名空间（如果不存在）
-          echo "创建生产环境命名空间 ${{ env.NAMESPACE_PROD }}..."
-          kubectl create namespace ${{ env.NAMESPACE_PROD }} --dry-run=client -o yaml | kubectl apply -f -
-          kubectl label namespace ${{ env.NAMESPACE_PROD }} environment=${{ env.ENV_PROD }} --overwrite
-          
-          echo "创建预发布环境命名空间 ${{ env.NAMESPACE_STAGING }}..."
-          kubectl create namespace ${{ env.NAMESPACE_STAGING }} --dry-run=client -o yaml | kubectl apply -f -
-          kubectl label namespace ${{ env.NAMESPACE_STAGING }} environment=${{ env.ENV_STAGING }} --overwrite
-          
-          echo "创建开发环境命名空间 ${{ env.NAMESPACE_DEV }}..."
-          kubectl create namespace ${{ env.NAMESPACE_DEV }} --dry-run=client -o yaml | kubectl apply -f -
-          kubectl label namespace ${{ env.NAMESPACE_DEV }} environment=${{ env.ENV_DEV }} --overwrite
-          
-          echo "命名空间设置完成！"
       
-      # 最后部署应用
+      # 设置Terraform和Terragrunt
+      - name: 设置Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+      
+      - name: 安装Terragrunt
+        run: |
+          wget https://github.com/gruntwork-io/terragrunt/releases/download/v0.38.0/terragrunt_linux_amd64
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+      
+      # 部署应用
       - name: 部署应用服务
         run: |
           # 创建临时变量文件，覆盖镜像标签
@@ -205,11 +185,6 @@ jobs:
       
       - name: 验证部署
         run: |
-          # 获取GKE集群凭证
-          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
-            --region ${{ env.GKE_REGION }} \
-            --project ${{ env.PROJECT_ID }}
-          
           # 检查部署状态
           kubectl get deployments -n ${{ env.NAMESPACE }}
           kubectl get pods -n ${{ env.NAMESPACE }}
@@ -227,7 +202,7 @@ jobs:
             DEPLOY_STATUS="失败"
           fi
           
-          echo "部署结果: $DEPLOY_STATUS"
+          echo "应用部署结果: $DEPLOY_STATUS"
           echo "部署环境: ${{ env.DEPLOY_ENV }}"
           echo "命名空间: ${{ env.NAMESPACE }}"
           echo "镜像标签: ${{ env.IMAGE_TAG }}"
