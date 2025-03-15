@@ -56,8 +56,8 @@ resource "kubernetes_resource_quota" "staging_quota" {
 
   spec {
     hard = {
-      "cpu"    = "8"
-      "memory" = "16Gi"
+      "cpu"    = "6"
+      "memory" = "6Gi"
       "pods"   = "20"
     }
   }
@@ -71,9 +71,9 @@ resource "kubernetes_resource_quota" "prod_quota" {
 
   spec {
     hard = {
-      "cpu"    = "16"
-      "memory" = "32Gi"
-      "pods"   = "40"
+      "cpu"    = "7"
+      "memory" = "7Gi"
+      "pods"   = "30"
     }
   }
 }
