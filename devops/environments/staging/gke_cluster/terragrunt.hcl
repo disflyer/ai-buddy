@@ -64,7 +64,7 @@ inputs = {
   }
   
   maintenance_window = {
-    start_time = "03:00"  # 每天凌晨3点开始维护
+    start_time = "03:00"  # 使用 HH:mm 格式
   }
   
   # 网络配置

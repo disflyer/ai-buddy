@@ -77,7 +77,7 @@ resource "google_container_cluster" "primary" {
   # 维护窗口
   maintenance_policy {
     daily_maintenance_window {
-      start_time = "${var.maintenance_window.start_time}:00Z"  # 例如 "03:00Z"
+      start_time = var.maintenance_window.start_time  # 直接使用 "03:00" 格式
     }
   }
 
