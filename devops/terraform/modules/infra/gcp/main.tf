@@ -44,14 +44,11 @@ resource "google_artifact_registry_repository" "app_registry" {
   
   # 添加生命周期块，防止在资源已存在时失败
   lifecycle {
-    ignore_changes = var.manage_existing_resources ? [
+    ignore_changes = [
       labels,
       description,
       format,
       repository_id
-    ] : [
-      labels,
-      description
     ]
   }
 }
@@ -88,7 +85,7 @@ resource "google_container_cluster" "primary" {
   # 添加全面的生命周期块，防止在资源已存在时失败
   lifecycle {
     prevent_destroy = true  # 防止误删除集群
-    ignore_changes = var.manage_existing_resources ? [
+    ignore_changes = [
       initial_node_count,
       node_config,
       master_authorized_networks_config,
@@ -100,10 +97,6 @@ resource "google_container_cluster" "primary" {
       network_policy,
       addons_config,
       security_posture_config
-    ] : [
-      initial_node_count,
-      resource_labels,
-      node_config,
     ]
   }
 
@@ -203,7 +196,7 @@ resource "google_container_node_pool" "primary_nodes" {
   
   # 添加全面的生命周期管理
   lifecycle {
-    ignore_changes = var.manage_existing_resources ? [
+    ignore_changes = [
       node_count,
       management,
       node_config.0.machine_type,
@@ -213,7 +206,7 @@ resource "google_container_node_pool" "primary_nodes" {
       node_config.0.metadata,
       node_config.0.labels,
       node_config.0.oauth_scopes
-    ] : []
+    ]
   }
 
   node_config {
