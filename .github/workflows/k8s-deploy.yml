@@ -20,71 +20,247 @@ on:
           - staging
           - prod
 
+# 环境变量配置
+env:
+  DEFAULT_REGISTRY_PREFIX: "us-central1-docker.pkg.dev" # 默认镜像仓库前缀
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # 确保前置工作流成功完成
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    
+    # 添加超时限制，防止任务卡住
+    timeout-minutes: 15
+    
+    # 添加并发限制，避免同时部署
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+      cancel-in-progress: false
     
     steps:
     - name: 检出代码
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4  # 使用最新版本
+      with:
+        fetch-depth: 1  # 浅克隆，提高速度
       
+    - name: 设置环境
+      id: env
+      run: |
+        # 确定要部署的环境
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          ENVIRONMENT="prod"
+        else
+          ENVIRONMENT="staging"
+        fi
+        
+        echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
+        echo "设置部署环境: ${ENVIRONMENT}"
+        
+        # 记录部署时间戳，用于追踪部署
+        DEPLOY_ID="$(date +%Y%m%d-%H%M%S)"
+        echo "DEPLOY_ID=${DEPLOY_ID}" >> $GITHUB_ENV
+        echo "部署ID: ${DEPLOY_ID}"
+    
+    # 使用缓存提高速度
+    - name: 缓存 kubectl 和 kustomize
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/bin/kubectl
+          ~/bin/kustomize
+        key: ${{ runner.os }}-k8s-tools-v1
+    
+    # 认证和配置
     - name: 设置 Google Cloud 认证
+      id: auth
       uses: google-github-actions/auth@v1
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
         create_credentials_file: true
+        export_environment_variables: true
         
     - name: 安装 gcloud CLI
       uses: google-github-actions/setup-gcloud@v1
+      with:
+        install_components: 'gke-gcloud-auth-plugin'  # 安装GKE认证插件
     
-    - name: 设置环境
-      id: env
-      run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          echo "ENVIRONMENT=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
-        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          echo "ENVIRONMENT=prod" >> $GITHUB_ENV
-        else
-          echo "ENVIRONMENT=staging" >> $GITHUB_ENV
-        fi
-        echo "使用环境: ${{ env.ENVIRONMENT }}"
-        
     - name: 获取 GKE 凭证
-      run: |
-        # 使用 GitHub Secrets 中的配置
-        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-        REGION="${{ secrets.GCP_REGION }}"
-        ZONE="${REGION}-a"
-        CLUSTER_NAME="${{ secrets.GKE_CLUSTER_NAME }}"
-        REGISTRY_PATH="${{ secrets.GCP_REGISTRY_PATH }}"
-        
-        # 如果没有设置 REGISTRY_PATH，则构建默认值
-        if [ -z "$REGISTRY_PATH" ]; then
-          REGISTRY_PATH="gcr.io/${PROJECT_ID}/app"
-        fi
-        
-        # 设置 Kubernetes 凭证和环境变量
-        gcloud container clusters get-credentials ${CLUSTER_NAME} --zone ${ZONE} --project ${PROJECT_ID}
-        echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_ENV
-        
+      id: get-credentials
+      uses: google-github-actions/get-gke-credentials@v1
+      with:
+        cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+        location: ${{ secrets.GCP_LOCATION }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+    
+    # 安装依赖工具
     - name: 安装 kubectl 和 kustomize
       run: |
-        curl -LO "https://dl.k8s.io/release/stable.txt"
-        curl -LO "https://dl.k8s.io/$(cat stable.txt)/bin/linux/amd64/kubectl"
-        chmod +x kubectl
-        sudo mv kubectl /usr/local/bin/
+        # 检查缓存
+        if [ ! -f ~/bin/kubectl ] || [ ! -f ~/bin/kustomize ]; then
+          mkdir -p ~/bin
+          
+          # 安装 kubectl
+          curl -LO "https://dl.k8s.io/release/stable.txt"
+          curl -LO "https://dl.k8s.io/$(cat stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          mv kubectl ~/bin/
+          
+          # 安装 kustomize
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          mv kustomize ~/bin/
+        fi
         
-        curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-        sudo mv kustomize /usr/local/bin/
-        
-    - name: 更新镜像路径
+        # 添加到 PATH
+        echo "~/bin" >> $GITHUB_PATH
+    
+    # 配置和验证
+    - name: 配置镜像仓库
+      id: registry
       run: |
-        sed -i "s|REGISTRY_PATH|${{ env.REGISTRY_PATH }}|g" devops/kubernetes/overlays/${{ env.ENVIRONMENT }}/kustomization.yaml
+        # 获取项目配置
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+        if [ -z "$PROJECT_ID" ]; then
+          echo "错误: 未设置 GCP_PROJECT_ID"
+          exit 1
+        fi
         
+        # 获取镜像仓库配置
+        REGISTRY_PATH="${{ secrets.GCP_REGISTRY_PATH }}"
+        
+        # 如果没有配置，则构建默认值
+        if [ -z "$REGISTRY_PATH" ]; then
+          REGISTRY_PREFIX="${{ env.DEFAULT_REGISTRY_PREFIX }}"
+          REGISTRY_PATH="${REGISTRY_PREFIX}/${PROJECT_ID}/app"
+          echo "使用默认镜像仓库路径: ${REGISTRY_PATH}"
+        else
+          echo "使用配置的镜像仓库路径: ${REGISTRY_PATH}"
+        fi
+        
+        # 输出到环境变量和输出变量
+        echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_ENV
+        echo "registry_path=${REGISTRY_PATH}" >> $GITHUB_OUTPUT
+    
+    # 验证集群连接
+    - name: 验证 Kubernetes 连接
+      run: |
+        echo "验证 Kubernetes 集群连接..."
+        kubectl cluster-info
+        kubectl get namespace ${{ env.ENVIRONMENT }} || kubectl create namespace ${{ env.ENVIRONMENT }}
+        echo "Kubernetes 集群连接正常"
+    
+    # 准备部署配置
+    - name: 准备部署配置
+      run: |
+        echo "准备 ${{ env.ENVIRONMENT }} 环境的部署配置..."
+        
+        # 检查配置文件
+        KUSTOMIZATION_FILE="devops/kubernetes/overlays/${{ env.ENVIRONMENT }}/kustomization.yaml"
+        if [ ! -f "$KUSTOMIZATION_FILE" ]; then
+          echo "错误: 配置文件不存在 - $KUSTOMIZATION_FILE"
+          exit 1
+        fi
+        
+        # 创建临时工作目录
+        WORK_DIR=$(mktemp -d)
+        cp -r devops/kubernetes/overlays/${{ env.ENVIRONMENT }}/* $WORK_DIR/
+        
+        # 替换镜像路径占位符
+        sed -i "s|REGISTRY_PATH|${{ env.REGISTRY_PATH }}|g" $WORK_DIR/kustomization.yaml
+        
+        # 添加部署注解
+        cat > $WORK_DIR/deployment-patch.yaml << EOF
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ${{ env.ENVIRONMENT }}-server
+        spec:
+          template:
+            metadata:
+              annotations:
+                deploy.timestamp: "${{ env.DEPLOY_ID }}"
+                deploy.github.actor: "${{ github.actor }}"
+                deploy.github.sha: "${{ github.sha }}"
+        EOF
+        
+        # 更新 kustomization 添加补丁
+        echo "- deployment-patch.yaml" >> $WORK_DIR/kustomization.yaml
+        
+        # 输出工作目录
+        echo "KUSTOMIZE_DIR=${WORK_DIR}" >> $GITHUB_ENV
+        
+        echo "已准备部署配置"
+    
+    # 部署前检查（可选，如果需要预验证配置）
+    - name: 部署前检查
+      run: |
+        echo "执行部署前检查..."
+        kubectl kustomize ${{ env.KUSTOMIZE_DIR }} > deploy-manifest.yaml
+        
+        # 验证配置语法
+        kubectl apply --dry-run=client -f deploy-manifest.yaml
+        
+        # 如果需要，这里可以添加更多验证逻辑
+        
+        echo "部署前检查通过"
+    
+    # 执行部署
     - name: 部署到 Kubernetes
-      run: kubectl apply -k devops/kubernetes/overlays/${{ env.ENVIRONMENT }}/
-      
+      run: |
+        echo "开始部署到 ${{ env.ENVIRONMENT }} 环境..."
+        kubectl apply -k ${{ env.KUSTOMIZE_DIR }}
+        echo "已应用部署配置"
+    
+    # 验证部署
     - name: 验证部署
       run: |
-        kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${{ env.ENVIRONMENT }}-server
+        echo "验证部署状态..."
+        
+        # 设置超时时间
+        TIMEOUT=300  # 5分钟超时
+        
+        # 监控部署状态
+        kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${{ env.ENVIRONMENT }}-server --timeout=${TIMEOUT}s
+        
+        # 验证 Pod 运行状态
+        READY_PODS=$(kubectl -n ${{ env.ENVIRONMENT }} get pods -l app=${{ env.ENVIRONMENT }}-server -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true" || echo "0")
+        TOTAL_PODS=$(kubectl -n ${{ env.ENVIRONMENT }} get pods -l app=${{ env.ENVIRONMENT }}-server --no-headers | wc -l)
+        
+        echo "就绪 Pod 数量: ${READY_PODS}/${TOTAL_PODS}"
+        
+        if [ "$READY_PODS" -eq 0 ]; then
+          echo "错误: 未找到就绪的 Pod"
+          kubectl -n ${{ env.ENVIRONMENT }} get pods -l app=${{ env.ENVIRONMENT }}-server
+          kubectl -n ${{ env.ENVIRONMENT }} describe pods -l app=${{ env.ENVIRONMENT }}-server
+          exit 1
+        fi
+        
+        echo "部署验证成功: 应用已在 ${{ env.ENVIRONMENT }} 环境中正常运行"
+    
+    # 部署报告（可选）
+    - name: 部署报告
+      if: always()
+      run: |
+        echo "生成部署报告..."
+        
+        # 获取部署状态
+        DEPLOY_STATUS="${{ job.status }}"
+        
+        # 输出部署信息
+        cat << EOF > deploy-report.txt
+        部署状态: ${DEPLOY_STATUS}
+        部署环境: ${{ env.ENVIRONMENT }}
+        部署ID: ${{ env.DEPLOY_ID }}
+        部署时间: $(date)
+        部署用户: ${{ github.actor }}
+        提交SHA: ${{ github.sha }}
+        镜像仓库: ${{ env.REGISTRY_PATH }}
+        EOF
+        
+        cat deploy-report.txt
+        
+        # 这里可以添加通知逻辑，例如发送到Slack或邮件
+        
+        echo "部署报告已生成"
