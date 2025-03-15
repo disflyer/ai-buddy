@@ -106,6 +106,7 @@ jobs:
         
         # 准备部署配置
         CONFIG_DIR="devops/kubernetes/overlays/${{ env.ENVIRONMENT }}"
+        BASE_DIR="devops/kubernetes/base"
         if [ ! -f "${CONFIG_DIR}/kustomization.yaml" ]; then
           echo "错误: 配置文件不存在 - ${CONFIG_DIR}/kustomization.yaml"
           exit 1
@@ -120,12 +121,49 @@ jobs:
         cp -r devops/kubernetes/base/* ${WORK_DIR}/base/
         cp -r devops/kubernetes/overlays/${{ env.ENVIRONMENT }}/* ${WORK_DIR}/overlays/${{ env.ENVIRONMENT }}/
         
+        # 显示基础目录中的文件，帮助调试
+        echo "基础目录内容:"
+        ls -la ${BASE_DIR}
+        ls -la ${WORK_DIR}/base
+
         # 替换镜像路径
         sed -i "s|REGISTRY_PATH|${{ env.REGISTRY_PATH }}|g" ${WORK_DIR}/overlays/${{ env.ENVIRONMENT }}/kustomization.yaml
         
-        # 查看 base 目录中的 deployment 名称，确保补丁正确
-        DEPLOYMENT_NAME=$(grep -A1 "kind: Deployment" ${WORK_DIR}/base/deployment.yaml | grep "name:" | awk '{print $2}')
-        echo "基础 Deployment 名称: ${DEPLOYMENT_NAME}"
+        # 更可靠地提取部署名称 - 检查多种可能的文件
+        DEPLOYMENT_NAME=""
+        if [ -f "${WORK_DIR}/base/deployment.yaml" ]; then
+          DEPLOYMENT_NAME=$(grep -A2 "kind: Deployment" ${WORK_DIR}/base/deployment.yaml | grep "name:" | head -n1 | awk '{print $2}')
+          echo "从 deployment.yaml 提取的部署名称: ${DEPLOYMENT_NAME}"
+        elif [ -f "${WORK_DIR}/base/app.yaml" ]; then
+          DEPLOYMENT_NAME=$(grep -A2 "kind: Deployment" ${WORK_DIR}/base/app.yaml | grep "name:" | head -n1 | awk '{print $2}')
+          echo "从 app.yaml 提取的部署名称: ${DEPLOYMENT_NAME}"
+        fi
+        
+        # 确保找到了部署名称
+        if [ -z "${DEPLOYMENT_NAME}" ]; then
+          echo "警告: 无法从基础配置中提取部署名称"
+          echo "检查基础目录中的 YAML 文件内容:"
+          cat ${WORK_DIR}/base/*.yaml
+          
+          # 尝试从 kustomization.yaml 中提取
+          if [ -f "${WORK_DIR}/base/kustomization.yaml" ]; then
+            RESOURCES=$(grep "resources:" -A10 ${WORK_DIR}/base/kustomization.yaml | grep -v "resources:" | grep -v "^#" | grep -v "^$" | head -n1 | tr -d ' -')
+            if [ -n "${RESOURCES}" ] && [ -f "${WORK_DIR}/base/${RESOURCES}" ]; then
+              DEPLOYMENT_NAME=$(grep -A2 "kind: Deployment" ${WORK_DIR}/base/${RESOURCES} | grep "name:" | head -n1 | awk '{print $2}')
+              echo "从 ${RESOURCES} 提取的部署名称: ${DEPLOYMENT_NAME}"
+            fi
+          fi
+          
+          # 如果仍然没有找到，使用默认值
+          if [ -z "${DEPLOYMENT_NAME}" ]; then
+            DEPLOYMENT_NAME="app"
+            echo "使用默认部署名称: ${DEPLOYMENT_NAME}"
+          fi
+        fi
+        
+        # 完整部署名称包含环境前缀
+        FULL_DEPLOYMENT_NAME="${{ env.ENVIRONMENT }}-${DEPLOYMENT_NAME}"
+        echo "完整部署名称: ${FULL_DEPLOYMENT_NAME}"
         
         # 添加部署注解 - 使用正确的资源名称
         cat > ${WORK_DIR}/overlays/${{ env.ENVIRONMENT }}/deployment-patch.yaml << EOF
@@ -156,9 +194,9 @@ jobs:
         echo "执行部署前验证..."
         kustomize build . > manifest.yaml
         
-        # 显示资源名称以帮助调试
-        echo "部署资源名称:"
-        grep -E "kind:|name:" manifest.yaml | grep -A1 "kind: Deployment" | grep "name:"
+        # 显示生成的清单文件内容
+        echo "生成的部署资源:"
+        grep -E "kind:|name:" manifest.yaml | grep -B1 -A1 "kind: Deployment"
         
         kubectl apply --dry-run=client -f manifest.yaml
         
@@ -166,12 +204,27 @@ jobs:
         echo "部署到 ${{ env.ENVIRONMENT }} 环境..."
         kubectl apply -f manifest.yaml
         
-        # 部署名称会根据 kustomization 添加前缀
-        FULL_DEPLOYMENT_NAME="${{ env.ENVIRONMENT }}-${DEPLOYMENT_NAME}"
-        echo "完整部署名称: ${FULL_DEPLOYMENT_NAME}"
-        
-        # 验证部署
+        # 验证部署 - 使用更可靠的方法获取部署名称
         echo "验证部署状态..."
+        ACTUAL_DEPLOYMENT=$(kubectl -n ${{ env.ENVIRONMENT }} get deployments -o name | grep "${FULL_DEPLOYMENT_NAME}" || echo "")
+        
+        if [ -z "${ACTUAL_DEPLOYMENT}" ]; then
+          echo "警告: 找不到名为 ${FULL_DEPLOYMENT_NAME} 的部署"
+          echo "列出命名空间中的所有部署:"
+          kubectl -n ${{ env.ENVIRONMENT }} get deployments
+          
+          # 尝试使用模糊匹配
+          ACTUAL_DEPLOYMENT=$(kubectl -n ${{ env.ENVIRONMENT }} get deployments -o name | grep "${{ env.ENVIRONMENT }}" | head -n1)
+          if [ -n "${ACTUAL_DEPLOYMENT}" ]; then
+            FULL_DEPLOYMENT_NAME=$(echo ${ACTUAL_DEPLOYMENT} | sed 's|deployment.apps/||')
+            echo "使用找到的部署: ${FULL_DEPLOYMENT_NAME}"
+          else
+            echo "错误: 命名空间中未找到任何部署"
+            exit 1
+          fi
+        fi
+        
+        # 验证部署状态
         kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${FULL_DEPLOYMENT_NAME} --timeout=300s
         
         # 检查 Pod 状态
