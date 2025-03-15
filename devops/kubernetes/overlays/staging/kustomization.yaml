@@ -15,5 +15,5 @@ patches:
 
 images:
 - name: app-server
-  newName: us-central1-docker.pkg.dev/rare-attic-453703-a8/shared-app-registry/ai-buddy/app-server
+  newName: REGISTRY_PATH/app-server
   newTag: latest 
