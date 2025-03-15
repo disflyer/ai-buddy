@@ -11,17 +11,17 @@ data "google_client_config" "default" {}
 # 创建基础设施
 module "infra" {
   source = "../modules/infra/gcp"
-  
+
   project_id   = var.project_id
   region       = var.region
-  env          = "shared"  # 共享环境标识
+  env          = "shared" # 共享环境标识
   cluster_name = var.cluster_name
   node_count   = var.node_count
   machine_type = var.machine_type
   disk_size_gb = var.disk_size_gb
   gpu_type     = var.gpu_type
   gpu_count    = var.gpu_count
-  
+
   # 将现有资源纳入 Terraform 管理而非创建新资源
   manage_existing_resources = true
 }
@@ -36,14 +36,14 @@ provider "kubernetes" {
 # 创建环境命名空间
 resource "kubernetes_namespace" "environments" {
   for_each = toset(["staging", "prod"])
-  
+
   metadata {
     name = each.key
     labels = {
       environment = each.key
     }
   }
-  
+
   depends_on = [module.infra]
 }
 
@@ -87,9 +87,9 @@ resource "kubernetes_network_policy" "isolate_prod" {
 
   spec {
     pod_selector {}
-    
+
     policy_types = ["Ingress"]
-    
+
     ingress {
       from {
         namespace_selector {
@@ -110,9 +110,9 @@ resource "kubernetes_network_policy" "isolate_staging" {
 
   spec {
     pod_selector {}
-    
+
     policy_types = ["Ingress"]
-    
+
     ingress {
       from {
         namespace_selector {
