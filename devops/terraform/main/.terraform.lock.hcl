@@ -57,3 +57,98 @@ provider "registry.terraform.io/hashicorp/time" {
     "zh:ce6df2c1052c60b4432cb5c0ead471d7cdb4b285b807c265328a358631fc3610",
   ]
 }
+
+# 创建 VPC 网络
+resource "google_compute_network" "vpc_network" {
+  name                    = "${var.env}-vpc-network"
+  auto_create_subnetworks = false
+  description             = "${var.env} 环境的 VPC 网络"
+  
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# 创建子网
+resource "google_compute_subnetwork" "subnet" {
+  name          = "${var.env}-${var.region}-subnet"
+  region        = var.region
+  network       = google_compute_network.vpc_network.id
+  ip_cidr_range = "10.0.0.0/20"
+  
+  # 启用私有 Google 访问，允许节点在没有外部 IP 的情况下访问 Google API
+  private_ip_google_access = true
+  
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# 创建防火墙规则 - 允许内部通信
+resource "google_compute_firewall" "allow_internal" {
+  name    = "${var.env}-allow-internal"
+  network = google_compute_network.vpc_network.name
+  
+  allow {
+    protocol = "icmp"
+  }
+  
+  allow {
+    protocol = "tcp"
+  }
+  
+  allow {
+    protocol = "udp"
+  }
+  
+  source_ranges = ["10.0.0.0/8"]
+}
+
+# 创建防火墙规则 - 允许健康检查
+resource "google_compute_firewall" "allow_healthcheck" {
+  name    = "${var.env}-allow-healthcheck"
+  network = google_compute_network.vpc_network.name
+  
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443"]
+  }
+  
+  source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
+}
+
+# 创建 GKE 集群
+resource "google_container_cluster" "primary" {
+  name     = "${var.env}-${var.cluster_name}"
+  location = "${var.region}-a"
+  
+  # 使用我们创建的网络和子网
+  network    = google_compute_network.vpc_network.name
+  subnetwork = google_compute_subnetwork.subnet.name
+  
+  # 其他配置保持不变...
+  remove_default_node_pool = true
+  initial_node_count       = 1
+  
+  deletion_protection = false
+  
+  # 添加全面的生命周期块
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [
+      initial_node_count,
+      node_config,
+      master_authorized_networks_config,
+      private_cluster_config,
+      ip_allocation_policy,
+      resource_labels,
+      remove_default_node_pool,
+      workload_identity_config,
+      network_policy,
+      addons_config,
+      security_posture_config
+    ]
+  }
+  
+  # 其余配置保持不变...
+}
