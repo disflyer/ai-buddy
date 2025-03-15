@@ -1,6 +1,27 @@
 # 获取 GCP 认证信息
 data "google_client_config" "default" {}
 
+# 创建 GKE 节点专用的服务账号
+resource "google_service_account" "gke_node_sa" {
+  account_id   = "${var.env}-gke-node-sa"
+  display_name = "GKE Node Service Account for ${var.env}"
+  project      = var.project_id
+}
+
+# 授予必要的权限
+resource "google_project_iam_member" "gke_node_sa_roles" {
+  for_each = toset([
+    "roles/monitoring.metricWriter",    # 允许写入监控指标
+    "roles/logging.logWriter",          # 允许写入日志
+    "roles/storage.objectViewer",       # 允许读取存储对象
+    "roles/artifactregistry.reader"     # 允许从Artifact Registry拉取镜像
+  ])
+  
+  project = var.project_id
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.gke_node_sa.email}"
+}
+
 # 创建 Artifact Registry 仓库
 resource "google_artifact_registry_repository" "app_registry" {
   location      = var.region
@@ -54,6 +75,23 @@ resource "google_container_cluster" "primary" {
     enable_private_nodes    = true
     enable_private_endpoint = false  # 允许从公共互联网访问控制平面，但节点是私有的
     master_ipv4_cidr_block  = "172.16.0.0/28"  # 为控制平面分配一个私有IP范围
+  }
+
+  # 启用主节点授权网络，限制可访问Kubernetes API的IP地址
+  master_authorized_networks_config {
+    cidr_blocks {
+      cidr_block   = "10.0.0.0/8"
+      display_name = "内部网络"
+    }
+    cidr_blocks {
+      cidr_block   = "192.168.0.0/16"
+      display_name = "VPN网络"
+    }
+    # 添加GitHub Actions运行器可能使用的IP范围
+    cidr_blocks {
+      cidr_block   = "0.0.0.0/0"  # 临时允许所有IP，在生产环境中应替换为特定IP
+      display_name = "CI/CD系统"
+    }
   }
 
   # 启用IP别名以允许Pod IP地址与GCP网络集成
@@ -118,6 +156,9 @@ resource "google_container_node_pool" "primary_nodes" {
     
     # 使用推荐的COS镜像类型
     image_type = "COS_CONTAINERD"
+    
+    # 使用自定义服务账号，如果未提供则使用新创建的服务账号
+    service_account = var.node_service_account_email != "" ? var.node_service_account_email : google_service_account.gke_node_sa.email
     
     # 禁用传统元数据端点，增强安全性
     metadata = {

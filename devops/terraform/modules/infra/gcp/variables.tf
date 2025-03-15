@@ -38,6 +38,12 @@ variable "disk_size_gb" {
   default     = 50
 }
 
+variable "node_service_account_email" {
+  description = "GKE节点使用的服务账号"
+  type        = string
+  default     = ""  # 在部署时必须提供
+}
+
 variable "gpu_type" {
   description = "GPU 类型 (如果需要)"
   type        = string
