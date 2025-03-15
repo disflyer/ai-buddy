@@ -64,7 +64,12 @@ jobs:
       working-directory: ${{ env.TF_WORKING_DIR }}
       run: |
         echo "使用凭证: $GOOGLE_APPLICATION_CREDENTIALS"
-        terraform init
+        # 确保 GCS 存储桶存在
+        gcloud storage buckets describe gs://rare-attic-453703-a8-terraform-state --project=rare-attic-453703-a8 || \
+        gcloud storage buckets create gs://rare-attic-453703-a8-terraform-state --project=rare-attic-453703-a8 --location=us-central1 --uniform-bucket-level-access
+        
+        # 增加 -reconfigure 参数以应用新的后端配置
+        terraform init -reconfigure
       env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         
