@@ -60,4 +60,10 @@ variable "deletion_protection" {
   description = "GKE 集群的删除保护设置"
   type        = bool
   default     = false
+}
+
+variable "manage_existing_resources" {
+  description = "是否将现有资源纳入 Terraform 管理"
+  type        = bool
+  default     = false
 } 

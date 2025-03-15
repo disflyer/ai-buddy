@@ -21,6 +21,9 @@ module "infra" {
   disk_size_gb = var.disk_size_gb
   gpu_type     = var.gpu_type
   gpu_count    = var.gpu_count
+  
+  # 将现有资源纳入 Terraform 管理而非创建新资源
+  manage_existing_resources = true
 }
 
 # 配置 Kubernetes 提供者

@@ -6,6 +6,14 @@ resource "google_service_account" "gke_node_sa" {
   account_id   = "${var.env}-gke-node-sa"
   display_name = "GKE Node Service Account for ${var.env}"
   project      = var.project_id
+  
+  # 防止因已存在服务账号导致的错误
+  lifecycle {
+    ignore_changes = [
+      display_name,
+      description
+    ]
+  }
 }
 
 # 授予必要的权限
@@ -20,6 +28,11 @@ resource "google_project_iam_member" "gke_node_sa_roles" {
   project = var.project_id
   role    = each.key
   member  = "serviceAccount:${google_service_account.gke_node_sa.email}"
+  
+  # 添加生命周期管理
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # 创建 Artifact Registry 仓库
@@ -31,7 +44,12 @@ resource "google_artifact_registry_repository" "app_registry" {
   
   # 添加生命周期块，防止在资源已存在时失败
   lifecycle {
-    ignore_changes = [
+    ignore_changes = var.manage_existing_resources ? [
+      labels,
+      description,
+      format,
+      repository_id
+    ] : [
       labels,
       description
     ]
@@ -46,6 +64,11 @@ resource "google_artifact_registry_repository_iam_member" "registry_access" {
   repository = google_artifact_registry_repository.app_registry.name
   role       = "roles/artifactregistry.reader"
   member     = "serviceAccount:${var.project_id}.svc.id.goog[${var.env}/default]"
+  
+  # 添加生命周期管理
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # 创建 GKE 集群
@@ -62,10 +85,22 @@ resource "google_container_cluster" "primary" {
   # 允许删除集群
   deletion_protection = false
 
-  # 添加生命周期块，防止在资源已存在时失败
+  # 添加全面的生命周期块，防止在资源已存在时失败
   lifecycle {
     prevent_destroy = true  # 防止误删除集群
-    ignore_changes = [
+    ignore_changes = var.manage_existing_resources ? [
+      initial_node_count,
+      node_config,
+      master_authorized_networks_config,
+      private_cluster_config,
+      ip_allocation_policy,
+      resource_labels,
+      remove_default_node_pool,
+      workload_identity_config,
+      network_policy,
+      addons_config,
+      security_posture_config
+    ] : [
       initial_node_count,
       resource_labels,
       node_config,
@@ -164,6 +199,21 @@ resource "google_container_node_pool" "primary_nodes" {
   management {
     auto_repair  = true
     auto_upgrade = true  # 必须为 true，因为集群使用 REGULAR 发布渠道
+  }
+  
+  # 添加全面的生命周期管理
+  lifecycle {
+    ignore_changes = var.manage_existing_resources ? [
+      node_count,
+      management,
+      node_config.0.machine_type,
+      node_config.0.disk_size_gb,
+      node_config.0.disk_type,
+      node_config.0.image_type,
+      node_config.0.metadata,
+      node_config.0.labels,
+      node_config.0.oauth_scopes
+    ] : []
   }
 
   node_config {
