@@ -73,7 +73,7 @@ jobs:
     - name: 设置 Terraform
       uses: hashicorp/setup-terraform@v2
       with:
-        terraform_version: 1.0.0
+        terraform_version: 1.5.7
         
     - name: Terraform 初始化
       working-directory: ${{ env.TF_WORKING_DIR }}

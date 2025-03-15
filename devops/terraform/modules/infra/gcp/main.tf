@@ -65,9 +65,11 @@ resource "google_container_cluster" "primary" {
     team        = "devops"
   }
 
-  # 启用Pod安全策略
-  pod_security_policy_config {
-    enabled = true
+  # 启用Pod安全标准
+  # 注意：pod_security_policy_config 已在新版本中被弃用
+  # 使用 GKE 的安全配置替代
+  security_posture_config {
+    mode = "BASIC"  # 启用基本的安全控制
   }
 
   # 配置私有集群设置
