@@ -36,6 +36,14 @@ resource "google_container_cluster" "primary" {
   # 允许删除集群
   deletion_protection = false
 
+  # 添加资源标签，便于资源管理和成本分配
+  resource_labels = {
+    environment = var.env
+    managed-by  = "terraform"
+    project     = "ai-buddy"
+    team        = "devops"
+  }
+
   # 启用Pod安全策略
   pod_security_policy_config {
     enabled = true
@@ -46,6 +54,12 @@ resource "google_container_cluster" "primary" {
     enable_private_nodes    = true
     enable_private_endpoint = false  # 允许从公共互联网访问控制平面，但节点是私有的
     master_ipv4_cidr_block  = "172.16.0.0/28"  # 为控制平面分配一个私有IP范围
+  }
+
+  # 启用IP别名以允许Pod IP地址与GCP网络集成
+  ip_allocation_policy {
+    cluster_ipv4_cidr_block  = "10.100.0.0/16"
+    services_ipv4_cidr_block = "10.101.0.0/16"
   }
 
   # 启用 Workload Identity
