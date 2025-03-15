@@ -25,16 +25,15 @@ env:
   DEFAULT_REGISTRY_PREFIX: "us-central1-docker.pkg.dev"
 
 jobs:
-  prepare:
-    name: 准备部署
+  deploy:
     runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.env-setup.outputs.environment }}
-      project_id: ${{ steps.gcp-info.outputs.project_id }}
-      cluster_name: ${{ steps.gcp-info.outputs.cluster_name }}
-      cluster_location: ${{ steps.gcp-info.outputs.cluster_location }}
-      registry_path: ${{ steps.gcp-info.outputs.registry_path }}
-      deploy_id: ${{ steps.env-setup.outputs.deploy_id }}
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    timeout-minutes: 15
+    
+    # 并发控制
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+      cancel-in-progress: false
     
     steps:
     - name: 检出代码
@@ -43,7 +42,7 @@ jobs:
         fetch-depth: 1
     
     - name: 设置环境变量
-      id: env-setup
+      id: env
       run: |
         # 设置部署环境
         if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -53,15 +52,13 @@ jobs:
         else
           ENVIRONMENT="staging"
         fi
+        echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
         
-        # 部署 ID
+        # 部署 ID 用于追踪和缓存无效化
         DEPLOY_ID="$(date +%Y%m%d-%H%M%S)"
-        
-        # 设置输出
-        echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
-        echo "deploy_id=${DEPLOY_ID}" >> $GITHUB_OUTPUT
+        echo "DEPLOY_ID=${DEPLOY_ID}" >> $GITHUB_ENV
     
-    - name: 设置 Google Cloud 认证
+    - name: 设置 Google Cloud 认证和提取项目信息
       id: auth
       uses: google-github-actions/auth@v1
       with:
@@ -70,84 +67,52 @@ jobs:
         export_environment_variables: true
     
     - name: 提取 GCP 项目信息
-      id: gcp-info
+      id: project
       run: |
         # 从服务账号密钥提取项目 ID
+        echo "提取 GCP 项目信息..."
         PROJECT_ID=$(cat $GOOGLE_APPLICATION_CREDENTIALS | jq -r '.project_id')
+        echo "PROJECT_ID=${PROJECT_ID}" >> $GITHUB_ENV
+        echo "project_id=${PROJECT_ID}" >> $GITHUB_OUTPUT
         
-        # 集群名称和位置 (可根据环境调整)
+        # 通常集群名称可以根据环境推断
         CLUSTER_NAME="ai-buddy-cluster"
+        echo "CLUSTER_NAME=${CLUSTER_NAME}" >> $GITHUB_ENV
+        
+        # 通常区域设置为 us-central1-a 或从服务账号区域确定
         CLUSTER_LOCATION="us-central1-a"
+        echo "CLUSTER_LOCATION=${CLUSTER_LOCATION}" >> $GITHUB_ENV
         
         # 构建镜像仓库路径
         REGISTRY_PATH="${{ env.DEFAULT_REGISTRY_PREFIX }}/${PROJECT_ID}/app"
-        
-        # 设置输出
-        echo "project_id=${PROJECT_ID}" >> $GITHUB_OUTPUT
-        echo "cluster_name=${CLUSTER_NAME}" >> $GITHUB_OUTPUT
-        echo "cluster_location=${CLUSTER_LOCATION}" >> $GITHUB_OUTPUT
-        echo "registry_path=${REGISTRY_PATH}" >> $GITHUB_OUTPUT
-
-  deploy:
-    name: 部署到 ${{ needs.prepare.outputs.environment }}
-    needs: prepare
-    runs-on: ubuntu-latest
-    # 使用 GitHub 环境功能，为不同环境设置不同的保护规则
-    environment: 
-      name: ${{ needs.prepare.outputs.environment }}
-      url: ${{ steps.deployment-url.outputs.url }}
-    
-    # 超时和并发控制
-    timeout-minutes: 15
-    concurrency:
-      group: ${{ github.workflow }}-${{ needs.prepare.outputs.environment }}
-      cancel-in-progress: false
-    
-    steps:
-    - name: 检出代码
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-    
-    - name: 设置 Google Cloud 认证
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-        create_credentials_file: true
-        export_environment_variables: true
+        echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_ENV
     
     - name: 设置 Kubernetes 工具
       uses: yokawasa/action-setup-kube-tools@v0.9.3
       with:
         kubectl: '1.28.3'
         kustomize: '5.1.1'
-        helm: '3.12.3'
-        setup-tools: kubectl,kustomize,helm
+        setup-tools: kubectl,kustomize
     
     - name: 获取 GKE 凭证
       id: get-credentials
       uses: google-github-actions/get-gke-credentials@v1
       with:
-        cluster_name: ${{ needs.prepare.outputs.cluster_name }}
-        location: ${{ needs.prepare.outputs.cluster_location }}
-        project_id: ${{ needs.prepare.outputs.project_id }}
+        cluster_name: ${{ env.CLUSTER_NAME }}
+        location: ${{ env.CLUSTER_LOCATION }}
+        project_id: ${{ env.PROJECT_ID }}
     
-    - name: 部署应用
-      id: deploy
+    - name: 准备并部署
       run: |
-        # 设置环境变量简化引用
-        ENVIRONMENT="${{ needs.prepare.outputs.environment }}"
-        DEPLOY_ID="${{ needs.prepare.outputs.deploy_id }}"
-        REGISTRY_PATH="${{ needs.prepare.outputs.registry_path }}"
+        echo "准备 ${{ env.ENVIRONMENT }} 环境的部署..."
         
-        echo "::group::准备部署配置"
         # 创建命名空间(如果不存在)
-        kubectl get namespace ${ENVIRONMENT} || kubectl create namespace ${ENVIRONMENT}
+        kubectl get namespace ${{ env.ENVIRONMENT }} || kubectl create namespace ${{ env.ENVIRONMENT }}
         
         # 准备部署配置
-        CONFIG_DIR="devops/kubernetes/overlays/${ENVIRONMENT}"
+        CONFIG_DIR="devops/kubernetes/overlays/${{ env.ENVIRONMENT }}"
         if [ ! -f "${CONFIG_DIR}/kustomization.yaml" ]; then
-          echo "::error::配置文件不存在 - ${CONFIG_DIR}/kustomization.yaml"
+          echo "错误: 配置文件不存在 - ${CONFIG_DIR}/kustomization.yaml"
           exit 1
         fi
         
@@ -155,157 +120,65 @@ jobs:
         WORK_DIR=$(mktemp -d)
         cp -r ${CONFIG_DIR}/* ${WORK_DIR}/
         
-        # 替换镜像路径
-        sed -i "s|REGISTRY_PATH|${REGISTRY_PATH}|g" ${WORK_DIR}/kustomization.yaml
+        # 替换镜像路径和添加部署注解
+        sed -i "s|REGISTRY_PATH|${{ env.REGISTRY_PATH }}|g" ${WORK_DIR}/kustomization.yaml
         
         # 添加部署注解
         cat > ${WORK_DIR}/deployment-patch.yaml << EOF
         apiVersion: apps/v1
         kind: Deployment
         metadata:
-          name: ${ENVIRONMENT}-server
+          name: ${{ env.ENVIRONMENT }}-server
         spec:
           template:
             metadata:
               annotations:
-                deploy.timestamp: "${DEPLOY_ID}"
+                deploy.timestamp: "${{ env.DEPLOY_ID }}"
                 deploy.github.actor: "${{ github.actor }}"
                 deploy.github.sha: "${{ github.sha }}"
-                deploy.github.workflow: "${{ github.workflow }}"
-                deploy.github.run_id: "${{ github.run_id }}"
         EOF
         
         # 更新 kustomization
         echo "- deployment-patch.yaml" >> ${WORK_DIR}/kustomization.yaml
-        echo "::endgroup::"
         
-        echo "::group::部署前验证"
-        # 生成和验证清单
-        MANIFEST_FILE="${WORK_DIR}/manifest.yaml"
-        kubectl kustomize ${WORK_DIR} > ${MANIFEST_FILE}
-        kubectl apply --dry-run=client -f ${MANIFEST_FILE}
-        echo "::endgroup::"
+        # 部署前验证
+        echo "执行部署前验证..."
+        kubectl kustomize ${WORK_DIR} | kubectl apply --dry-run=client -f -
         
-        echo "::group::执行部署"
-        # 创建部署注释
-        echo "开始部署到 ${ENVIRONMENT} 环境..."
+        # 执行部署
+        echo "部署到 ${{ env.ENVIRONMENT }} 环境..."
+        kubectl apply -k ${WORK_DIR}
         
-        # 记录部署开始时间用于计算耗时
-        START_TIME=$(date +%s)
+        # 验证部署
+        echo "验证部署状态..."
+        kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${{ env.ENVIRONMENT }}-server --timeout=300s
         
-        # 应用配置
-        kubectl apply -f ${MANIFEST_FILE}
-        
-        # 监控部署状态
-        echo "等待部署完成..."
-        if ! kubectl -n ${ENVIRONMENT} rollout status deployment/${ENVIRONMENT}-server --timeout=300s; then
-          echo "::error::部署超时或失败"
-          echo "部署日志:"
-          kubectl -n ${ENVIRONMENT} get events --sort-by='.lastTimestamp' | tail -n 20
-          exit 1
-        fi
-        
-        # 计算部署耗时
-        END_TIME=$(date +%s)
-        DURATION=$((END_TIME - START_TIME))
-        echo "部署耗时: ${DURATION} 秒"
-        echo "::endgroup::"
-        
-        echo "::group::部署验证"
-        # 获取部署状态
-        READY_PODS=$(kubectl -n ${ENVIRONMENT} get pods -l app=${ENVIRONMENT}-server -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true" || echo "0")
-        TOTAL_PODS=$(kubectl -n ${ENVIRONMENT} get pods -l app=${ENVIRONMENT}-server --no-headers | wc -l)
+        # 检查 Pod 状态
+        READY_PODS=$(kubectl -n ${{ env.ENVIRONMENT }} get pods -l app=${{ env.ENVIRONMENT }}-server -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true" || echo "0")
+        TOTAL_PODS=$(kubectl -n ${{ env.ENVIRONMENT }} get pods -l app=${{ env.ENVIRONMENT }}-server --no-headers | wc -l)
         
         echo "就绪 Pod 数量: ${READY_PODS}/${TOTAL_PODS}"
         if [ "$READY_PODS" -eq 0 ]; then
-          echo "::error::未找到就绪的 Pod"
-          kubectl -n ${ENVIRONMENT} get pods -l app=${ENVIRONMENT}-server
-          kubectl -n ${ENVIRONMENT} describe pods -l app=${ENVIRONMENT}-server
+          echo "错误: 未找到就绪的 Pod"
+          kubectl -n ${{ env.ENVIRONMENT }} get pods -l app=${{ env.ENVIRONMENT }}-server
+          kubectl -n ${{ env.ENVIRONMENT }} describe pods -l app=${{ env.ENVIRONMENT }}-server
           exit 1
         fi
         
-        # 获取服务信息
-        SERVICE_NAME="${ENVIRONMENT}-server"
-        SERVICE_TYPE=$(kubectl -n ${ENVIRONMENT} get service ${SERVICE_NAME} -o jsonpath='{.spec.type}' 2>/dev/null || echo "未找到")
-        
-        if [ "$SERVICE_TYPE" == "LoadBalancer" ]; then
-          # 获取负载均衡器 IP
-          LB_IP=$(kubectl -n ${ENVIRONMENT} get service ${SERVICE_NAME} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
-          if [ "$LB_IP" != "pending" ]; then
-            echo "应用已部署并通过负载均衡器 ${LB_IP} 暴露"
-            echo "app_url=http://${LB_IP}" >> $GITHUB_OUTPUT
-          else
-            echo "负载均衡器 IP 仍在分配中"
-          fi
-        elif [ "$SERVICE_TYPE" == "ClusterIP" ]; then
-          echo "应用已部署 (仅集群内部访问)"
-        else
-          echo "服务类型: ${SERVICE_TYPE}"
-        fi
-        
-        # 输出部署成功信息
-        echo "部署 ${ENVIRONMENT} 环境成功完成"
-        echo "::endgroup::"
-        
-        # 输出摘要信息用于部署报告
-        echo "pods_ready=${READY_PODS}" >> $GITHUB_OUTPUT
-        echo "pods_total=${TOTAL_PODS}" >> $GITHUB_OUTPUT
-        echo "deploy_duration=${DURATION}" >> $GITHUB_OUTPUT
+        echo "部署成功完成"
     
-    - name: 获取部署 URL
-      id: deployment-url
-      run: |
-        # 此步骤可基于环境设置合适的 URL
-        ENV="${{ needs.prepare.outputs.environment }}"
-        if [ "$ENV" == "prod" ]; then
-          echo "url=https://app.example.com" >> $GITHUB_OUTPUT
-        else
-          echo "url=https://${ENV}.app.example.com" >> $GITHUB_OUTPUT
-        fi
-      
-    - name: 生成部署摘要
+    - name: 部署报告
       if: always()
       run: |
-        # 使用 GitHub Actions 的摘要功能生成更美观的报告
-        ENVIRONMENT="${{ needs.prepare.outputs.environment }}"
-        DEPLOY_STATUS="${{ job.status }}"
-        DEPLOY_COLOR=$([[ "$DEPLOY_STATUS" == "success" ]] && echo "green" || echo "red")
-        
-        # 创建部署摘要文件
-        cat > $GITHUB_STEP_SUMMARY << EOF
-        # $ENVIRONMENT 环境部署摘要
-        
-        | 属性 | 值 |
-        | --- | --- |
-        | **状态** | <span style="color:${DEPLOY_COLOR}">$DEPLOY_STATUS</span> |
-        | **环境** | $ENVIRONMENT |
-        | **部署 ID** | ${{ needs.prepare.outputs.deploy_id }} |
-        | **Pod 就绪情况** | ${{ steps.deploy.outputs.pods_ready }}/${{ steps.deploy.outputs.pods_total }} |
-        | **部署耗时** | ${{ steps.deploy.outputs.deploy_duration }} 秒 |
-        | **项目 ID** | ${{ needs.prepare.outputs.project_id }} |
-        | **集群名称** | ${{ needs.prepare.outputs.cluster_name }} |
-        | **部署时间** | $(date "+%Y-%m-%d %H:%M:%S") |
-        | **触发用户** | ${{ github.actor }} |
-        | **提交 SHA** | [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) |
-        | **工作流** | [${{ github.workflow }} #${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
-        
-        ### 镜像信息
-        \`\`\`
-        ${{ needs.prepare.outputs.registry_path }}
-        \`\`\`
-        
-        $([[ "$DEPLOY_STATUS" != "success" ]] && echo "### ⚠️ 部署失败 ⚠️" || echo "### ✅ 部署成功 ✅")
-        EOF
-        
-        # 同时还可以生成传统的报告文件（如果需要）
+        echo "生成部署报告..."
         cat << EOF > deploy-report.txt
-        部署状态: ${DEPLOY_STATUS}
-        部署环境: ${ENVIRONMENT}
-        部署ID: ${{ needs.prepare.outputs.deploy_id }}
+        部署状态: ${{ job.status }}
+        部署环境: ${{ env.ENVIRONMENT }}
+        部署ID: ${{ env.DEPLOY_ID }}
         部署时间: $(date)
         部署用户: ${{ github.actor }}
         提交SHA: ${{ github.sha }}
-        镜像仓库: ${{ needs.prepare.outputs.registry_path }}
+        镜像仓库: ${{ env.REGISTRY_PATH }}
         EOF
         
         cat deploy-report.txt
