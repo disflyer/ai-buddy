@@ -51,14 +51,20 @@ jobs:
         echo "使用环境: ${{ env.ENVIRONMENT }}"
         
     - name: 获取 GKE 凭证
-      working-directory: devops/terraform/main
       run: |
-        PROJECT_ID=$(grep -E "^project_id\s*=" terraform.tfvars | cut -d'"' -f2)
-        REGION=$(grep -E "^region\s*=" terraform.tfvars | cut -d'"' -f2)
+        # 使用 GitHub Secrets 中的配置
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+        REGION="${{ secrets.GCP_REGION }}"
         ZONE="${REGION}-a"
-        CLUSTER_NAME=$(terraform output -raw kubernetes_cluster_name)
-        REGISTRY_PATH=$(terraform output -raw image_registry_path)
+        CLUSTER_NAME="${{ secrets.GKE_CLUSTER_NAME }}"
+        REGISTRY_PATH="${{ secrets.GCP_REGISTRY_PATH }}"
         
+        # 如果没有设置 REGISTRY_PATH，则构建默认值
+        if [ -z "$REGISTRY_PATH" ]; then
+          REGISTRY_PATH="gcr.io/${PROJECT_ID}/app"
+        fi
+        
+        # 设置 Kubernetes 凭证和环境变量
         gcloud container clusters get-credentials ${CLUSTER_NAME} --zone ${ZONE} --project ${PROJECT_ID}
         echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_ENV
         
