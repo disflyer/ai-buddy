@@ -86,14 +86,14 @@ jobs:
           terraform import module.infra.google_artifact_registry_repository.app_registry projects/rare-attic-453703-a8/locations/us-central1/repositories/shared-app-registry || echo "导入失败或资源不存在"
         fi
         
-        # 检查并导入 GKE 集群 - 注意名称可能是 shared-shared-cluster 或 shared-app-cluster
+        # 检查并导入 GKE 集群 - 注意名称可能是 shared-app-cluster 或 shared-app-cluster
         if ! terraform state list | grep -q "module.infra.google_container_cluster.primary"; then
           echo "尝试导入 GKE 集群资源 (shared-app-cluster)..."
           terraform import module.infra.google_container_cluster.primary projects/rare-attic-453703-a8/zones/us-central1-a/clusters/shared-app-cluster || echo "尝试备选名称..."
           
           if ! terraform state list | grep -q "module.infra.google_container_cluster.primary"; then
-            echo "尝试导入 GKE 集群资源 (shared-shared-cluster)..."
-            terraform import module.infra.google_container_cluster.primary projects/rare-attic-453703-a8/zones/us-central1-a/clusters/shared-shared-cluster || echo "导入失败或资源不存在"
+            echo "尝试导入 GKE 集群资源 (shared-app-cluster)..."
+            terraform import module.infra.google_container_cluster.primary projects/rare-attic-453703-a8/zones/us-central1-a/clusters/shared-app-cluster || echo "导入失败或资源不存在"
           fi
         fi
         
