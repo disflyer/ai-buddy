@@ -94,7 +94,7 @@ resource "google_container_node_pool" "prod_nodes" {
   node_config {
     machine_type = "e2-standard-4"
     disk_size_gb = 100
-    disk_type    = "pd-ssd"
+    disk_type    = "pd-balanced"
     image_type   = "COS_CONTAINERD"
 
     oauth_scopes = [

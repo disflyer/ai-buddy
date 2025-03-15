@@ -54,9 +54,9 @@ inputs = {
   
   cluster_tier = {
     machine_type        = "e2-standard-2"  # 测试环境使用经济机型
-    disk_size_gb        = 50
+    disk_size_gb        = 30               # 减小磁盘大小
     min_node_count      = 1
-    max_node_count      = 3
+    max_node_count      = 2                # 减少最大节点数
     preemptible         = true             # 启用抢占式节点
     gpu_enabled         = false
     gpu_type            = "nvidia-tesla-t4"
