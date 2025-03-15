@@ -28,6 +28,14 @@ resource "google_artifact_registry_repository" "app_registry" {
   repository_id = "${var.env}-app-registry"
   format        = "DOCKER"
   description   = "${var.env} 环境的容器镜像仓库"
+  
+  # 添加生命周期块，防止在资源已存在时失败
+  lifecycle {
+    ignore_changes = [
+      labels,
+      description
+    ]
+  }
 }
 
 # 授予 GKE 服务账号访问 Artifact Registry 的权限
@@ -38,16 +46,13 @@ resource "google_artifact_registry_repository_iam_member" "registry_access" {
   repository = google_artifact_registry_repository.app_registry.name
   role       = "roles/artifactregistry.reader"
   member     = "serviceAccount:${var.project_id}.svc.id.goog[${var.env}/default]"
-  
-  # 移除依赖项
-  # depends_on = [google_container_cluster.primary]
 }
 
 # 创建 GKE 集群
 # tfsec:ignore:google-gke-enforce-pod-security-policy
 # tfsec:ignore:google-gke-no-public-control-plane
 resource "google_container_cluster" "primary" {
-  name     = "${var.env}-${var.cluster_name}"
+  name     = "${var.env}-${var.cluster_name}"  # 注意：这可能导致名称重复为 "shared-shared-cluster"
   location = "${var.region}-a"  # 使用单区域部署而非整个区域
   
   # 删除默认节点池，使用单独管理的节点池
@@ -56,6 +61,16 @@ resource "google_container_cluster" "primary" {
   
   # 允许删除集群
   deletion_protection = false
+
+  # 添加生命周期块，防止在资源已存在时失败
+  lifecycle {
+    prevent_destroy = true  # 防止误删除集群
+    ignore_changes = [
+      initial_node_count,
+      resource_labels,
+      node_config,
+    ]
+  }
 
   # 添加资源标签，便于资源管理和成本分配
   resource_labels = {

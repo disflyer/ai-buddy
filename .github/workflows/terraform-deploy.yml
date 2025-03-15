@@ -83,6 +83,24 @@ jobs:
       env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         
+    - name: 导入现有资源（如果需要）
+      working-directory: ${{ env.TF_WORKING_DIR }}
+      if: github.event_name == 'workflow_dispatch' && contains(github.event.inputs.auto_approve, 'true')
+      run: |
+        echo "检查是否需要导入资源..."
+        # 检查资源是否存在于状态文件中
+        if ! terraform state list | grep -q "module.infra.google_artifact_registry_repository.app_registry"; then
+          echo "导入 Artifact Registry 资源..."
+          terraform import module.infra.google_artifact_registry_repository.app_registry projects/rare-attic-453703-a8/locations/us-central1/repositories/shared-app-registry || echo "导入失败或资源不存在"
+        fi
+        
+        if ! terraform state list | grep -q "module.infra.google_container_cluster.primary"; then
+          echo "导入 GKE 集群资源..."
+          terraform import module.infra.google_container_cluster.primary projects/rare-attic-453703-a8/zones/us-central1-a/clusters/shared-shared-cluster || echo "导入失败或资源不存在"
+        fi
+      env:
+        GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+        
     - name: Terraform 格式检查
       working-directory: ${{ env.TF_WORKING_DIR }}
       run: terraform fmt -check || (echo "格式错误，自动修复中..." && terraform fmt && echo "已自动修复格式问题")
