@@ -1,158 +1,90 @@
-# AI Buddy 基础设施与部署说明
+# 跨云平台 Kubernetes 服务部署
 
-## 项目结构
+这个项目提供了使用 Terraform 实现的跨云平台 Kubernetes 服务部署解决方案，目前优先支持 GCP，同时设计架构便于未来集成其他云平台（AWS、阿里云等）。
+
+## 功能特性
+
+- Kubernetes 集群自动创建和配置
+- 通过命名空间隔离 prod 和 staging 环境
+- WebSocket 服务部署和配置
+- 自动从 Hugging Face 拉取模型到 Pod
+
+## 目录结构
 
 ```
-devops/
-├── environments/           # 环境特定配置
-│   ├── prod/               # 生产环境
-│   │   ├── network/        # 网络模块配置
-│   │   ├── gke_cluster/    # GKE集群配置
-│   │   ├── secret_manager/ # Secret Manager配置
-│   │   └── app_server/     # 应用服务配置
-│   └── staging/            # 预发布环境
-│       ├── network/        # 网络模块配置
-│       ├── gke_cluster/    # GKE集群配置
-│       ├── secret_manager/ # Secret Manager配置
-│       └── app_server/     # 应用服务配置
-├── modules/                # Terraform模块
-│   ├── network/            # 网络模块
-│   ├── gke_cluster/        # GKE集群模块
-│   ├── secret_manager/     # Secret Manager模块
-│   └── app_server/         # 应用服务模块
-├── terragrunt.hcl          # 根Terragrunt配置
-└── service-account.json    # GCP服务账号凭证
+terraform-multi-cloud/
+├── modules/
+│   ├── infra/
+│   │   └── gcp/              # GCP 基础设施模块
+│   │       ├── main.tf       # GKE 集群创建
+│   │       ├── variables.tf  # 变量定义
+│   │       └── outputs.tf    # 输出定义
+│   └── k8s/                  # Kubernetes 应用模块
+│       ├── main.tf           # 基础配置
+│       ├── app.tf            # 应用部署
+│       ├── model.tf          # 模型加载
+│       ├── variables.tf      # 变量定义
+│       └── outputs.tf        # 输出定义
+└── environments/
+    ├── prod/                 # 生产环境
+    │   ├── main.tf           # 主配置
+    │   ├── variables.tf      # 变量定义
+    │   └── terraform.tfvars  # 环境变量值
+    └── staging/              # 预发环境
+        ├── main.tf           # 主配置
+        ├── variables.tf      # 变量定义
+        └── terraform.tfvars  # 环境变量值
 ```
 
-## 访问配置
+## 使用方法
 
-### 直接通过IP访问 (当前配置)
+### 1. 前提条件
 
-目前服务配置为可通过负载均衡器的IP地址直接访问：
+- 安装 Terraform (v1.0.0+)
+- 配置云平台凭证 (GCP: 设置 GOOGLE_APPLICATION_CREDENTIALS 环境变量)
+- 创建容器镜像并上传到容器仓库
 
-- **HTTP访问**: `http://<负载均衡器IP>`
-- **WebSocket访问**: `ws://<负载均衡器IP>:8080/ws`
+### 2. 配置
 
-通过IP访问时，不会进行TLS加密。如需安全连接，请配置域名和TLS证书。
+1. 进入对应环境目录（prod 或 staging）
+2. 编辑 `terraform.tfvars` 文件，设置您的项目配置：
+   - 项目 ID
+   - 区域
+   - 镜像信息
+   - 资源配置等
 
-### 域名结构 (未来配置)
-
-当需要通过域名访问时，可使用以下域名结构：
-
-| 环境 | 域名 | WebSocket路径 |
-|-----|------|------------|
-| 预发布环境 | api-staging.aibuddy.cn | wss://api-staging.aibuddy.cn/ws |
-| 生产环境 | api.aibuddy.cn | wss://api.aibuddy.cn/ws |
-
-启用域名访问需修改配置文件中的 `enable_tls` 和 `enable_ingress` 参数。
-
-## 部署指南
-
-### 前置条件
-
-在开始部署基础设施前，请确保以下API服务已在GCP项目中启用：
-
-1. Compute Engine API (`compute.googleapis.com`)
-2. Service Networking API (`servicenetworking.googleapis.com`)
-3. Cloud Resource Manager API (`cloudresourcemanager.googleapis.com`)
-4. Identity and Access Management API (`iam.googleapis.com`)
-5. Kubernetes Engine API (`container.googleapis.com`)
-
-您可以通过Google Cloud Console的"API和服务"部分启用这些API，或使用以下gcloud命令：
+### 3. 部署
 
 ```bash
-# 启用所需的API
-gcloud services enable compute.googleapis.com \
-    servicenetworking.googleapis.com \
-    cloudresourcemanager.googleapis.com \
-    iam.googleapis.com \
-    container.googleapis.com
+# 初始化 Terraform
+cd environments/prod  # 或 staging
+terraform init
+
+# 查看执行计划
+terraform plan
+
+# 应用配置
+terraform apply
 ```
 
-确保执行此命令的账号拥有足够的权限。
-
-### 基础设施部署
-
-在部署应用前，需要先部署基础设施：
+### 4. 清理资源
 
 ```bash
-# 部署预发布环境基础设施
-cd devops/environments/staging/network
-terragrunt apply
-
-cd ../gke_cluster
-terragrunt apply
-
-cd ../secret_manager
-terragrunt apply
-
-# 部署生产环境基础设施流程类似
+terraform destroy
 ```
 
-### 应用部署
+## 扩展到其他云平台
 
-应用服务部署：
+当需要扩展到其他云平台时，只需：
 
-```bash
-# 部署预发布环境应用
-cd devops/environments/staging/app_server
-terragrunt apply
+1. 在 `modules/infra/` 下创建对应平台实现
+2. 确保新模块保持相同的输出接口
+3. 更新 `k8s` 模块的云平台特定配置
+4. 创建新环境配置，指定 `cloud_provider` 参数
 
-# 部署生产环境应用
-cd devops/environments/prod/app_server
-terragrunt apply
-```
+## 注意事项
 
-## 获取负载均衡器IP
-
-部署完成后，可以通过以下命令获取服务IP地址：
-
-```bash
-# 获取预发布环境IP
-kubectl get svc -n staging staging-app-server-lb -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-
-# 获取生产环境IP
-kubectl get svc -n production prod-app-server-lb -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-```
-
-## 测试连接
-
-您可以使用以下方法测试连接：
-
-### HTTP测试
-```bash
-# 测试预发布环境
-curl http://<预发布环境IP>/health
-
-# 测试生产环境
-curl http://<生产环境IP>/health
-```
-
-### WebSocket测试
-```javascript
-// 浏览器控制台测试预发布环境
-const socket = new WebSocket('ws://<预发布环境IP>:8080/ws');
-socket.onopen = () => console.log('连接成功');
-socket.onmessage = (event) => console.log('收到消息:', event.data);
-```
-
-## 安全注意事项
-
-1. IP直接访问不提供TLS加密，请勿在公开环境传输敏感数据
-2. 防火墙规则已配置为仅允许必要的端口
-3. 生产环境使用高优先级Pod保证服务稳定性
-
-## 运维指南
-
-### 监控
-
-- 应用服务已配置监控
-- 可通过Google Cloud Console或Kubernetes Dashboard查看监控数据
-
-### 故障排除
-
-如果通过IP访问失败，请检查：
-1. 负载均衡器是否已成功创建并分配IP
-2. 防火墙规则是否允许80和8080端口
-3. 服务Pod是否正常运行
-4. 网络策略是否限制了访问 
+- 确保拥有足够的配额来创建资源
+- 使用服务账号时赋予最小权限
+- 部署前检查网络和防火墙配置
+- 对于生产环境，建议启用额外的安全措施 
