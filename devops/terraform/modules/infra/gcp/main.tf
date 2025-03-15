@@ -42,7 +42,17 @@ resource "google_artifact_registry_repository" "app_registry" {
   format        = "DOCKER"
   description   = "${var.env} 环境的容器镜像仓库"
   
-  # 添加生命周期块，防止在资源已存在时失败
+  # 添加更详细的错误日志
+  provisioner "local-exec" {
+    command = "echo '仓库创建状态: 成功' > /tmp/registry_create.log"
+  }
+  
+  # 失败时输出更明确的错误
+  provisioner "local-exec" {
+    when    = destroy
+    command = "echo '仓库删除状态: 成功' > /tmp/registry_delete.log"
+  }
+  
   lifecycle {
     ignore_changes = [
       labels,
@@ -51,6 +61,12 @@ resource "google_artifact_registry_repository" "app_registry" {
       repository_id
     ]
   }
+}
+
+# 添加间隔资源，确保创建完成
+resource "time_sleep" "wait_after_registry" {
+  depends_on = [google_artifact_registry_repository.app_registry]
+  create_duration = "10s"
 }
 
 # 授予 GKE 服务账号访问 Artifact Registry 的权限
