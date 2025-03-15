@@ -10,6 +10,7 @@ resource "google_artifact_registry_repository" "app_registry" {
 }
 
 # 授予 GKE 服务账号访问 Artifact Registry 的权限
+# 注意：移除对 GKE 集群的显式依赖，改为使用 workload 标识前缀
 resource "google_artifact_registry_repository_iam_member" "registry_access" {
   project    = var.project_id
   location   = google_artifact_registry_repository.app_registry.location
@@ -17,7 +18,8 @@ resource "google_artifact_registry_repository_iam_member" "registry_access" {
   role       = "roles/artifactregistry.reader"
   member     = "serviceAccount:${var.project_id}.svc.id.goog[${var.env}/default]"
   
-  depends_on = [google_container_cluster.primary]
+  # 移除依赖项
+  # depends_on = [google_container_cluster.primary]
 }
 
 # 创建 GKE 集群

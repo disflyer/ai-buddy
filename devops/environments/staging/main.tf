@@ -34,6 +34,9 @@ provider "kubernetes" {
 module "app" {
   source = "../../modules/k8s"
   
+  # 添加显式依赖，确保基础设施模块先创建完成
+  depends_on = [module.infra]
+  
   cloud_provider   = "gcp"
   env              = "staging"
   namespace        = "staging"
