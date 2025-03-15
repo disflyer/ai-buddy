@@ -164,16 +164,29 @@ if [[ "$DEPLOY_APP" == "true" ]]; then
     cd ../..
   fi
   
-  # 替换镜像仓库路径
-  echo -e "${YELLOW}更新镜像仓库路径...${NC}"
-  sed -i.bak "s|REGISTRY_PATH|$REGISTRY_PATH|g" kubernetes/overlays/$ENVIRONMENT/kustomization.yaml
+  # 生成版本标签
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  GIT_COMMIT=$(git rev-parse --short HEAD || echo "latest")
+  IMAGE_TAG="${GIT_COMMIT}-${TIMESTAMP}"
   
-  # 应用 Kustomize 配置
+  echo -e "${YELLOW}使用镜像标签: ${IMAGE_TAG}${NC}"
+  
+  # 更新镜像配置
+  echo -e "${YELLOW}更新镜像仓库路径和标签...${NC}"
+  cd kubernetes/overlays/$ENVIRONMENT/
+  
+  # 使用 kustomize edit 命令更新镜像
+  kustomize edit set image app-server=${REGISTRY_PATH}/app-server:${IMAGE_TAG}
+  
+  # 应用 Kubernetes 配置
   echo -e "${YELLOW}应用 Kubernetes 配置...${NC}"
-  kubectl apply -k kubernetes/overlays/$ENVIRONMENT/
+  kubectl apply -k .
   
-  # 恢复原始文件
-  mv kubernetes/overlays/$ENVIRONMENT/kustomization.yaml.bak kubernetes/overlays/$ENVIRONMENT/kustomization.yaml
+  # 记录部署版本
+  echo -e "${YELLOW}记录部署版本信息...${NC}"
+  echo "最近部署版本: ${IMAGE_TAG}" > ../../../.deploy-version-${ENVIRONMENT}
+  
+  cd ../../..
   
   echo -e "${GREEN}$ENVIRONMENT 环境应用部署完成${NC}"
 fi

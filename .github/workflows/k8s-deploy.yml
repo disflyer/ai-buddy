@@ -51,11 +51,15 @@ jobs:
         
         # 设置镜像信息
         PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | base64 -d | jq -r '.project_id')
-        IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+        
+        # 生成版本标签 - 使用提交哈希和时间戳组合
+        IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)-$(date +%Y%m%d-%H%M%S)
+        
         REGISTRY_PATH="us-central1-docker.pkg.dev/${PROJECT_ID}/app/${APP_NAME}:${IMAGE_TAG}"
         
         echo "PROJECT_ID=${PROJECT_ID}" >> $GITHUB_OUTPUT
         echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_OUTPUT
+        echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
     
     - name: 设置 Google Cloud 认证
       uses: google-github-actions/auth@v1
@@ -95,12 +99,14 @@ jobs:
         # 切换到目标命名空间
         kubectl config set-context --current --namespace=${{ steps.env.outputs.ENVIRONMENT }}
         
-        # 部署应用
-        kustomize build devops/kubernetes/overlays/${{ steps.env.outputs.ENVIRONMENT }} \
-          --load-restrictor LoadRestrictionsNone \
-          --enable-alpha-plugins \
-          --kustomize-plugin-dir image-patch.yaml | \
-          kubectl apply -f -
+        # 部署应用（使用正确的镜像更新方法）
+        cd devops/kubernetes/overlays/${{ steps.env.outputs.ENVIRONMENT }}
+        
+        # 使用 kustomize edit 命令更新镜像信息
+        kustomize edit set image ${{ env.APP_NAME }}=${{ steps.env.outputs.REGISTRY_PATH }}
+        
+        # 应用配置
+        kubectl apply -k .
         
         # 等待部署完成
         kubectl rollout status deployment/${{ env.APP_NAME }} --timeout=${{ env.DEPLOY_TIMEOUT }}
@@ -128,9 +134,18 @@ jobs:
         状态: ${{ job.status }}
         环境: ${{ steps.env.outputs.ENVIRONMENT }}
         镜像: ${{ steps.env.outputs.REGISTRY_PATH }}
+        版本标签: ${{ steps.env.outputs.IMAGE_TAG }}
         时间: $(date)
         提交: ${{ github.sha }}
         
         $(kubectl get pods -l app=${{ env.APP_NAME }} -o wide)
+        
+        上线策略: 滚动更新 (RollingUpdate)
+        maxSurge: 1, maxUnavailable: 0
         =================================================
         EOF
+        
+        # 记录部署信息到文件
+        echo "环境: ${{ steps.env.outputs.ENVIRONMENT }}" > deployment-info.txt
+        echo "版本: ${{ steps.env.outputs.IMAGE_TAG }}" >> deployment-info.txt
+        echo "时间: $(date)" >> deployment-info.txt
