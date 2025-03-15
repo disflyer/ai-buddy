@@ -57,7 +57,7 @@ jobs:
       - name: Terraform 验证
         id: validate
         run: |
-          cd environments/${{ env.TF_ENVIRONMENT }}
+          cd devops/environments/${{ env.TF_ENVIRONMENT }}
           terraform init -backend=false -input=false
           terraform validate
 
@@ -81,14 +81,14 @@ jobs:
       - name: Terraform 初始化
         id: init
         run: |
-          cd environments/${{ env.TF_ENVIRONMENT }}
+          cd devops/environments/${{ env.TF_ENVIRONMENT }}
           terraform init -input=false
         if: steps.auth.outcome == 'success'
 
       - name: Terraform 计划
         id: plan
         run: |
-          cd environments/${{ env.TF_ENVIRONMENT }}
+          cd devops/environments/${{ env.TF_ENVIRONMENT }}
           terraform plan -input=false -no-color
         continue-on-error: true
         if: steps.init.outcome == 'success'
@@ -101,7 +101,7 @@ jobs:
           ((github.ref == 'refs/heads/main' && github.event_name == 'push') ||
           (github.event_name == 'workflow_dispatch' && inputs.auto_approve))
         run: |
-          cd environments/${{ env.TF_ENVIRONMENT }}
+          cd devops/environments/${{ env.TF_ENVIRONMENT }}
           terraform apply -auto-approve -input=false
 
       # 获取输出信息
@@ -109,7 +109,7 @@ jobs:
         id: outputs
         if: steps.apply.outcome == 'success'
         run: |
-          cd environments/${{ env.TF_ENVIRONMENT }}
+          cd devops/environments/${{ env.TF_ENVIRONMENT }}
           echo "SERVICE_ENDPOINT=$(terraform output -raw service_endpoint 2>/dev/null || echo '未找到服务端点')" >> $GITHUB_OUTPUT
           echo "IMAGE_REGISTRY_PATH=$(terraform output -raw image_registry_path 2>/dev/null || echo '未找到镜像仓库路径')" >> $GITHUB_OUTPUT
       
