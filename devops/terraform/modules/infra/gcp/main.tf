@@ -325,12 +325,6 @@ resource "google_container_node_pool" "primary_nodes" {
     ignore_changes = [
       node_count,
       management,
-      node_config.0.machine_type,
-      node_config.0.disk_size_gb,
-      node_config.0.disk_type,
-      node_config.0.image_type,
-      node_config.0.metadata,
-      node_config.0.labels,
       node_config.0.oauth_scopes
     ]
   }
