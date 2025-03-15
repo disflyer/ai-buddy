@@ -22,8 +22,8 @@ module "infra" {
   gpu_type     = var.gpu_type
   gpu_count    = var.gpu_count
 
-  # 将现有资源纳入 Terraform 管理而非创建新资源
-  manage_existing_resources = true
+  # 允许 Terraform 修改资源
+  manage_existing_resources = false
 }
 
 # 配置 Kubernetes 提供者
