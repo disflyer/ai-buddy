@@ -116,7 +116,7 @@ jobs:
         echo "测试时间: $(date)" >> test-report.md
         
     - name: 上传测试报告
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: integration-test-report
         path: test-report.md 
