@@ -8,7 +8,7 @@ on:
   push:
     branches: [ dev, main ]
     paths:
-      - 'kubernetes/**'  # 仅当 Kubernetes 配置变更时触发
+      - 'devops/kubernetes/**'  # 仅当 Kubernetes 配置变更时触发
   workflow_dispatch:
     inputs:
       environment:
@@ -51,7 +51,7 @@ jobs:
         echo "使用环境: ${{ env.ENVIRONMENT }}"
         
     - name: 获取 GKE 凭证
-      working-directory: terraform/main
+      working-directory: devops/terraform/main
       run: |
         PROJECT_ID=$(grep -E "^project_id\s*=" terraform.tfvars | cut -d'"' -f2)
         REGION=$(grep -E "^region\s*=" terraform.tfvars | cut -d'"' -f2)
@@ -81,4 +81,4 @@ jobs:
       
     - name: 验证部署
       run: |
-        kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${{ env.ENVIRONMENT }}-app-server 
+        kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${{ env.ENVIRONMENT }}-app-server

@@ -4,11 +4,11 @@ on:
   push:
     branches: [ dev, main ]
     paths:
-      - 'terraform/**'  # 仅当 Terraform 配置变更时触发
+      - 'devops/terraform/**'  # 仅当 Terraform 配置变更时触发
   pull_request:
     branches: [ dev, main ]
     paths:
-      - 'terraform/**'
+      - 'devops/terraform/**'
   workflow_dispatch:  # 允许手动触发
     inputs:
       environment:
@@ -26,7 +26,7 @@ on:
         default: false
 
 env:
-  TF_WORKING_DIR: terraform/main
+  TF_WORKING_DIR: devops/terraform/main
 
 jobs:
   terraform:

@@ -21,12 +21,12 @@ jobs:
     - name: tfsec 扫描
       uses: aquasecurity/tfsec-action@v1.0.0
       with:
-        working_directory: terraform
+        working_directory: devops/terraform
         
     - name: 检查 terraform-docs
       uses: terraform-docs/gh-actions@v1.0.0
       with:
-        working-dir: terraform
+        working-dir: devops/terraform
         output-file: README.md
         output-method: inject
         git-push: "true"
@@ -42,7 +42,7 @@ jobs:
     - name: Kubesec 扫描
       uses: controlplaneio/kubesec-action@master
       with:
-        input: kubernetes/base/deployment.yaml
+        input: devops/kubernetes/base/deployment.yaml
         format: json
         output: kubesec-results.json
         
