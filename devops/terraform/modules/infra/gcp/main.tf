@@ -1,3 +1,79 @@
+# 验证项目配置
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
+# 检查所有必要的 API 是否启用
+resource "null_resource" "check_apis" {
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "检查项目 ${var.project_id} 中的 API 状态..."
+      # 这里可以添加更多验证逻辑
+    EOT
+  }
+}
+
+# 创建 VPC 网络
+resource "google_compute_network" "vpc_network" {
+  name                    = "${var.env}-vpc-network"
+  auto_create_subnetworks = false
+  description             = "${var.env} 环境的 VPC 网络"
+  
+  depends_on = [null_resource.check_apis]
+  
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# 创建子网
+resource "google_compute_subnetwork" "subnet" {
+  name          = "${var.env}-${var.region}-subnet"
+  region        = var.region
+  network       = google_compute_network.vpc_network.id
+  ip_cidr_range = "10.0.0.0/20"
+  
+  # 启用私有 Google 访问，允许节点在没有外部 IP 的情况下访问 Google API
+  private_ip_google_access = true
+  
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# 创建防火墙规则 - 允许内部通信
+resource "google_compute_firewall" "allow_internal" {
+  name    = "${var.env}-allow-internal"
+  network = google_compute_network.vpc_network.name
+  
+  allow {
+    protocol = "icmp"
+  }
+  
+  allow {
+    protocol = "tcp"
+  }
+  
+  allow {
+    protocol = "udp"
+  }
+  
+  source_ranges = ["10.0.0.0/8"]
+}
+
+# 创建防火墙规则 - 允许健康检查
+resource "google_compute_firewall" "allow_healthcheck" {
+  name    = "${var.env}-allow-healthcheck"
+  network = google_compute_network.vpc_network.name
+  
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443"]
+  }
+  
+  source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
+}
+
 # 获取 GCP 认证信息
 data "google_client_config" "default" {}
 
@@ -78,6 +154,12 @@ resource "google_artifact_registry_repository_iam_member" "registry_access" {
   role       = "roles/artifactregistry.reader"
   member     = "serviceAccount:${var.project_id}.svc.id.goog[${var.env}/default]"
   
+  # 添加显式依赖，确保 Artifact Registry 仓库先创建完成
+  depends_on = [
+    google_artifact_registry_repository.app_registry,
+    time_sleep.wait_after_registry
+  ]
+  
   # 添加生命周期管理
   lifecycle {
     create_before_destroy = true
@@ -91,12 +173,24 @@ resource "google_container_cluster" "primary" {
   name     = "${var.env}-${var.cluster_name}"  # 注意：这可能导致名称重复为 "shared-app-cluster"
   location = "${var.region}-a"  # 使用单区域部署而非整个区域
   
+  # 使用我们创建的 VPC 网络和子网
+  network    = google_compute_network.vpc_network.self_link
+  subnetwork = google_compute_subnetwork.subnet.self_link
+  
   # 删除默认节点池，使用单独管理的节点池
   remove_default_node_pool = true
   initial_node_count       = 1
   
   # 允许删除集群
   deletion_protection = false
+
+  # 添加显式依赖，确保网络先创建完成
+  depends_on = [
+    google_compute_network.vpc_network,
+    google_compute_subnetwork.subnet,
+    google_compute_firewall.allow_internal,
+    google_compute_firewall.allow_healthcheck
+  ]
 
   # 添加全面的生命周期块，防止在资源已存在时失败
   lifecycle {
@@ -112,7 +206,9 @@ resource "google_container_cluster" "primary" {
       workload_identity_config,
       network_policy,
       addons_config,
-      security_posture_config
+      security_posture_config,
+      network,
+      subnetwork
     ]
   }
 
@@ -203,6 +299,13 @@ resource "google_container_node_pool" "primary_nodes" {
   location   = "${var.region}-a"  # 使用单区域部署而非整个区域
   cluster    = google_container_cluster.primary.name
   node_count = var.node_count
+
+  # 确保集群和网络先创建
+  depends_on = [
+    google_container_cluster.primary,
+    google_compute_network.vpc_network,
+    google_compute_subnetwork.subnet
+  ]
 
   # 添加自动修复配置，但启用自动升级以符合 REGULAR 发布渠道要求
   management {

@@ -18,10 +18,12 @@ function show_help {
   echo -e "  -a, --app          仅部署应用"
   echo -e "  -e, --env ENV      指定环境 (staging 或 prod，默认: staging)"
   echo -e "  -p, --plan         仅显示 Terraform 计划，不应用"
+  echo -e "  -n, --setup-network 设置 VPC 网络 (在应用 Terraform 之前运行)"
   echo
   echo -e "${YELLOW}示例:${NC}"
-  echo -e "  $0 -i -e prod      部署生产环境基础设施"
-  echo -e "  $0 -a -e staging   部署测试环境应用"
+  echo -e "  $0 -n                设置必要的网络资源"
+  echo -e "  $0 -i -e prod        部署生产环境基础设施"
+  echo -e "  $0 -a -e staging     部署测试环境应用"
 }
 
 # 默认值
@@ -29,6 +31,7 @@ DEPLOY_INFRA=false
 DEPLOY_APP=false
 ENVIRONMENT="staging"
 PLAN_ONLY=false
+SETUP_NETWORK=false
 
 # 解析参数
 while [[ $# -gt 0 ]]; do
@@ -53,6 +56,10 @@ while [[ $# -gt 0 ]]; do
       PLAN_ONLY=true
       shift
       ;;
+    -n|--setup-network)
+      SETUP_NETWORK=true
+      shift
+      ;;
     *)
       echo -e "${RED}错误: 未知选项 $1${NC}"
       show_help
@@ -62,7 +69,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # 如果没有指定部署类型，则默认全部部署
-if [[ "$DEPLOY_INFRA" == "false" && "$DEPLOY_APP" == "false" ]]; then
+if [[ "$DEPLOY_INFRA" == "false" && "$DEPLOY_APP" == "false" && "$SETUP_NETWORK" == "false" ]]; then
   DEPLOY_INFRA=true
   DEPLOY_APP=true
 fi
@@ -73,9 +80,46 @@ if [[ "$ENVIRONMENT" != "staging" && "$ENVIRONMENT" != "prod" ]]; then
   exit 1
 fi
 
+# 设置网络
+if [[ "$SETUP_NETWORK" == "true" ]]; then
+  echo -e "${YELLOW}设置 VPC 网络...${NC}"
+  
+  # 执行网络设置脚本
+  ./setup-network.sh
+  
+  echo -e "${GREEN}网络设置完成${NC}"
+  exit 0
+fi
+
+# 检查网络是否已设置
+function check_network {
+  # 提取项目 ID 和区域
+  PROJECT_ID=$(grep -E "^project_id\s*=" terraform/main/terraform.tfvars | cut -d'"' -f2)
+  REGION=$(grep -E "^region\s*=" terraform/main/terraform.tfvars | cut -d'"' -f2)
+  ENV="shared"
+  NETWORK_NAME="${ENV}-vpc-network"
+  
+  echo -e "${YELLOW}检查 VPC 网络是否存在...${NC}"
+  
+  # 配置服务账号
+  export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
+  
+  # 检查网络
+  if ! gcloud compute networks describe $NETWORK_NAME --project=$PROJECT_ID &>/dev/null; then
+    echo -e "${RED}错误: VPC 网络 '$NETWORK_NAME' 不存在${NC}"
+    echo -e "${YELLOW}请先运行 '$0 --setup-network' 来设置必要的网络资源${NC}"
+    exit 1
+  fi
+  
+  echo -e "${GREEN}找到 VPC 网络: $NETWORK_NAME${NC}"
+}
+
 # 部署基础设施
 if [[ "$DEPLOY_INFRA" == "true" ]]; then
   echo -e "${GREEN}开始部署基础设施...${NC}"
+  
+  # 检查网络先决条件
+  check_network
   
   cd terraform/main
   
