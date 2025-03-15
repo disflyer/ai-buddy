@@ -73,46 +73,6 @@ jobs:
       env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         
-    - name: 导入现有资源（如果需要）
-      working-directory: ${{ env.TF_WORKING_DIR }}
-      run: |
-        echo "检查是否需要导入资源..."
-        # 尝试先移除可能存在的状态，再导入
-        
-        # 检查并导入服务账号
-        if ! terraform state list | grep -q "module.infra.google_service_account.gke_node_sa"; then
-          echo "导入服务账号资源..."
-          terraform import module.infra.google_service_account.gke_node_sa projects/rare-attic-453703-a8/serviceAccounts/shared-gke-node-sa@rare-attic-453703-a8.iam.gserviceaccount.com || echo "导入失败或资源不存在"
-        fi
-        
-        # 检查并导入 Artifact Registry
-        if ! terraform state list | grep -q "module.infra.google_artifact_registry_repository.app_registry"; then
-          echo "导入 Artifact Registry 资源..."
-          terraform import module.infra.google_artifact_registry_repository.app_registry projects/rare-attic-453703-a8/locations/us-central1/repositories/shared-app-registry || echo "导入失败或资源不存在"
-        fi
-        
-        # 检查并导入 GKE 集群 - 注意名称可能是 shared-app-cluster 或 shared-app-cluster
-        if ! terraform state list | grep -q "module.infra.google_container_cluster.primary"; then
-          echo "尝试导入 GKE 集群资源 (shared-app-cluster)..."
-          terraform import module.infra.google_container_cluster.primary projects/rare-attic-453703-a8/zones/us-central1-a/clusters/shared-app-cluster || echo "尝试备选名称..."
-          
-          if ! terraform state list | grep -q "module.infra.google_container_cluster.primary"; then
-            echo "尝试导入 GKE 集群资源 (shared-app-cluster)..."
-            terraform import module.infra.google_container_cluster.primary projects/rare-attic-453703-a8/zones/us-central1-a/clusters/shared-app-cluster || echo "导入失败或资源不存在"
-          fi
-        fi
-        
-        # 检查并导入节点池
-        if ! terraform state list | grep -q "module.infra.google_container_node_pool.primary_nodes"; then
-          CLUSTER_NAME=$(gcloud container clusters list --filter="name~shared" --format="value(name)" --limit=1)
-          if [ -n "$CLUSTER_NAME" ]; then
-            echo "导入节点池资源 ($CLUSTER_NAME)..."
-            terraform import module.infra.google_container_node_pool.primary_nodes projects/rare-attic-453703-a8/zones/us-central1-a/clusters/$CLUSTER_NAME/nodePools/shared-pool || echo "导入失败或资源不存在"
-          fi
-        fi
-      env:
-        GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-        
     - name: Terraform 格式检查
       working-directory: ${{ env.TF_WORKING_DIR }}
       run: terraform fmt -check || (echo "格式错误，自动修复中..." && terraform fmt && echo "已自动修复格式问题")
