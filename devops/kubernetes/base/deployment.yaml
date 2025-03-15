@@ -99,6 +99,16 @@ spec:
       containers:
       - name: app-server
         image: app-server:latest
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
         ports:
         - containerPort: 8000
           name: http
@@ -119,6 +129,25 @@ spec:
             port: http
           initialDelaySeconds: 60
           periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 12  # 允许应用最多有60秒启动时间(12 * 5s)
         volumeMounts:
         - name: models-volume
           mountPath: /app/models

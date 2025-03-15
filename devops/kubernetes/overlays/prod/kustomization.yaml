@@ -17,6 +17,10 @@ patches:
   target:
     kind: Deployment
     name: app-server
+- path: deployment-ha.yaml
+  target:
+    kind: Deployment
+    name: app-server
 
 images:
 - name: app-server

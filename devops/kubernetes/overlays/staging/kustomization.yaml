@@ -12,17 +12,19 @@ patches:
   target:
     kind: ConfigMap
     name: app-config
+- path: deployment-annotations.yaml
+  target:
+    kind: Deployment
+    name: app-server
+- path: deployment-resource-limits.yaml
+  target:
+    kind: Deployment
+    name: app-server
 
 images:
 - name: app-server
   newName: REGISTRY_PATH/app-server
   newTag: latest
-
-bases:
-  - ../../base
-
-patchesStrategicMerge:
-  - deployment-annotations.yaml
 
 commonAnnotations:
   # 这些注解会被添加到所有资源

@@ -71,6 +71,8 @@ jobs:
       with:
         kubectl: '1.28.3'
         kustomize: '5.1.1'
+        helm: '3.13.3'
+        kubeconform: '0.6.4'
     
     - name: 获取 GKE 凭证
       uses: google-github-actions/get-gke-credentials@v1
@@ -79,17 +81,18 @@ jobs:
         location: ${{ env.CLUSTER_LOCATION }}
         project_id: ${{ steps.env.outputs.PROJECT_ID }}
     
-    - name: 准备部署配置
+    - name: 配置验证
       run: |
-        # 创建 kustomization.yaml 的补丁
-        cat > image-patch.yaml << EOF
-        apiVersion: kustomize.config.k8s.io/v1beta1
-        kind: Kustomization
-        images:
-        - name: ${{ env.APP_NAME }}
-          newName: us-central1-docker.pkg.dev/${{ steps.env.outputs.PROJECT_ID }}/app/${{ env.APP_NAME }}
-          newTag: $(echo ${{ github.sha }} | cut -c1-7)
-        EOF
+        cd devops/kubernetes/overlays/${{ steps.env.outputs.ENVIRONMENT }}
+        
+        # 更新镜像
+        kustomize edit set image ${{ env.APP_NAME }}=${{ steps.env.outputs.REGISTRY_PATH }}
+        
+        # 构建配置并验证
+        kustomize build . | kubeconform -kubernetes-version 1.28.0 -strict
+        
+        # 使用 conftest 进行策略验证 (需要先安装，这里仅作为示例)
+        # kustomize build . | conftest test -p policy/ -
     
     - name: 部署应用
       run: |
@@ -99,11 +102,19 @@ jobs:
         # 切换到目标命名空间
         kubectl config set-context --current --namespace=${{ steps.env.outputs.ENVIRONMENT }}
         
+        # 记录当前版本用于可能的回滚
+        PREV_REVISION=$(kubectl get deploy ${{ env.APP_NAME }} -o jsonpath='{.metadata.annotations.kubernetes\.io/change-cause}' 2>/dev/null || echo "none")
+        echo "PREV_REVISION=${PREV_REVISION}" >> $GITHUB_ENV
+        
         # 部署应用（使用正确的镜像更新方法）
         cd devops/kubernetes/overlays/${{ steps.env.outputs.ENVIRONMENT }}
         
         # 使用 kustomize edit 命令更新镜像信息
         kustomize edit set image ${{ env.APP_NAME }}=${{ steps.env.outputs.REGISTRY_PATH }}
+        
+        # 添加 change-cause 注解记录此次部署
+        DEPLOY_CAUSE="Deployed by GitHub Actions - commit: ${{ github.sha }} - tag: ${{ steps.env.outputs.IMAGE_TAG }}"
+        kustomize edit add annotation "kubernetes.io/change-cause:${DEPLOY_CAUSE}"
         
         # 应用配置
         kubectl apply -k .
@@ -112,6 +123,7 @@ jobs:
         kubectl rollout status deployment/${{ env.APP_NAME }} --timeout=${{ env.DEPLOY_TIMEOUT }}
     
     - name: 验证部署
+      id: verify
       run: |
         # 检查 Pod 状态
         READY_PODS=$(kubectl get pods -l app=${{ env.APP_NAME }} -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true" || echo "0")
@@ -123,8 +135,19 @@ jobs:
           echo "错误: 部署验证失败"
           kubectl get pods -l app=${{ env.APP_NAME }}
           kubectl describe pods -l app=${{ env.APP_NAME }}
+          echo "verify_failed=true" >> $GITHUB_OUTPUT
           exit 1
         fi
+        
+        echo "verify_failed=false" >> $GITHUB_OUTPUT
+    
+    - name: 回滚失败的部署
+      if: failure() && steps.verify.outputs.verify_failed == 'true' && env.PREV_REVISION != 'none'
+      run: |
+        echo "部署验证失败，尝试回滚..."
+        kubectl rollout undo deployment/${{ env.APP_NAME }}
+        kubectl rollout status deployment/${{ env.APP_NAME }} --timeout=${{ env.DEPLOY_TIMEOUT }}
+        echo "已回滚到前一个版本: ${PREV_REVISION}"
     
     - name: 部署报告
       if: always()
