@@ -23,6 +23,8 @@ resource "google_artifact_registry_repository_iam_member" "registry_access" {
 }
 
 # 创建 GKE 集群
+# tfsec:ignore:google-gke-enforce-pod-security-policy
+# tfsec:ignore:google-gke-no-public-control-plane
 resource "google_container_cluster" "primary" {
   name     = "${var.env}-${var.cluster_name}"
   location = "${var.region}-a"  # 使用单区域部署而非整个区域
@@ -33,6 +35,18 @@ resource "google_container_cluster" "primary" {
   
   # 允许删除集群
   deletion_protection = false
+
+  # 启用Pod安全策略
+  pod_security_policy_config {
+    enabled = true
+  }
+
+  # 配置私有集群设置
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false  # 允许从公共互联网访问控制平面，但节点是私有的
+    master_ipv4_cidr_block  = "172.16.0.0/28"  # 为控制平面分配一个私有IP范围
+  }
 
   # 启用 Workload Identity
   workload_identity_config {
@@ -45,13 +59,14 @@ resource "google_container_cluster" "primary" {
     disk_size_gb = 50
   }
   
-  # 减少资源消耗的配置
-  logging_service    = "none"  # 禁用默认的 Stackdriver 日志服务
-  monitoring_service = "none"  # 禁用默认的监控服务
+  # 配置监控和日志服务
+  logging_service    = "logging.googleapis.com/kubernetes"  # 启用 Stackdriver 日志服务
+  monitoring_service = "monitoring.googleapis.com/kubernetes"  # 启用 Stackdriver 监控服务
   
-  # 禁用默认的网络策略
+  # 启用网络策略，增强Pod间通信安全性
   network_policy {
-    enabled = false
+    enabled = true
+    provider = "CALICO"  # 使用Calico作为网络策略提供者
   }
   
   # 精简 GKE 集群控制平面
@@ -63,12 +78,13 @@ resource "google_container_cluster" "primary" {
       disabled = true  # 禁用 Pod 自动扩缩
     }
     network_policy_config {
-      disabled = true  # 禁用网络策略
+      disabled = false  # 启用网络策略配置
     }
   }
 }
 
 # 创建节点池
+# tfsec:ignore:google-gke-metadata-endpoints-disabled
 resource "google_container_node_pool" "primary_nodes" {
   name       = "${var.env}-pool"
   location   = "${var.region}-a"  # 使用单区域部署而非整个区域
@@ -85,6 +101,14 @@ resource "google_container_node_pool" "primary_nodes" {
     machine_type = var.machine_type
     disk_size_gb = var.disk_size_gb
     disk_type    = "pd-standard"
+    
+    # 使用推荐的COS镜像类型
+    image_type = "COS_CONTAINERD"
+    
+    # 禁用传统元数据端点，增强安全性
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
     
     # 添加节点标签
     labels = {

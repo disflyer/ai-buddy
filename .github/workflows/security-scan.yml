@@ -39,15 +39,24 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v3
       
-    - name: Kubesec 扫描
-      uses: controlplaneio/kubesec-action@master
-      with:
-        input: devops/kubernetes/base/deployment.yaml
-        format: json
-        output: kubesec-results.json
+    - name: 安装 kubesec
+      run: |
+        # 安装 kubesec CLI
+        curl -sSL https://github.com/controlplaneio/kubesec/releases/download/v2.13.0/kubesec_linux_amd64.tar.gz | tar -xz
+        chmod +x kubesec
+        sudo mv kubesec /usr/local/bin/
+        
+    - name: 运行 Kubesec 扫描
+      run: |
+        mkdir -p results
+        kubesec scan devops/kubernetes/base/deployment.yaml > results/kubesec-results.json
+        
+    - name: 显示扫描结果
+      run: |
+        cat results/kubesec-results.json | jq
         
     - name: 上传扫描结果
       uses: actions/upload-artifact@v3
       with:
         name: security-scan-results
-        path: kubesec-results.json 
+        path: results/kubesec-results.json 

@@ -74,11 +74,11 @@ jobs:
         
     - name: 更新镜像路径
       run: |
-        sed -i "s|REGISTRY_PATH|${{ env.REGISTRY_PATH }}|g" kubernetes/overlays/${{ env.ENVIRONMENT }}/kustomization.yaml
+        sed -i "s|REGISTRY_PATH|${{ env.REGISTRY_PATH }}|g" devops/kubernetes/overlays/${{ env.ENVIRONMENT }}/kustomization.yaml
         
     - name: 部署到 Kubernetes
-      run: kubectl apply -k kubernetes/overlays/${{ env.ENVIRONMENT }}/
+      run: kubectl apply -k devops/kubernetes/overlays/${{ env.ENVIRONMENT }}/
       
     - name: 验证部署
       run: |
-        kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${{ env.ENVIRONMENT }}-app-server
+        kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${{ env.ENVIRONMENT }}-server
