@@ -57,7 +57,7 @@ locals {
 # 创建GKE集群
 resource "google_container_cluster" "primary" {
   name               = var.cluster_name
-  location           = var.region
+  location           = "${var.region}-a"
   initial_node_count = 1
   min_master_version = var.kubernetes_version
 

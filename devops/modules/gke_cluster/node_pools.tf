@@ -1,7 +1,7 @@
 # 默认节点池
 resource "google_container_node_pool" "primary_nodes" {
   name       = "${var.env}-primary-pool"
-  location   = var.region
+  location   = "${var.region}-a"
   cluster    = google_container_cluster.primary.name
   node_count = var.cluster_tier.min_node_count
   version    = var.kubernetes_version
@@ -71,7 +71,7 @@ resource "google_container_node_pool" "primary_nodes" {
 resource "google_container_node_pool" "prod_nodes" {
   count      = var.env == "prod" ? 1 : 0
   name       = "prod-dedicated-pool"
-  location   = var.region
+  location   = "${var.region}-a"
   cluster    = google_container_cluster.primary.name
   node_count = 2
   version    = var.kubernetes_version
@@ -93,7 +93,7 @@ resource "google_container_node_pool" "prod_nodes" {
 
   node_config {
     machine_type = "e2-standard-4"
-    disk_size_gb = 100
+    disk_size_gb = 80
     disk_type    = "pd-balanced"
     image_type   = "COS_CONTAINERD"
 

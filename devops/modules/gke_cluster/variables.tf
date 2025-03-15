@@ -43,7 +43,7 @@ variable "cluster_tier" {
   })
   default = {
     machine_type        = "e2-medium"
-    disk_size_gb        = 100
+    disk_size_gb        = 80
     min_node_count      = 1
     max_node_count      = 5
     preemptible         = true
