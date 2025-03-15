@@ -20,15 +20,14 @@ env:
   APP_NAME: app-server
   CLUSTER_NAME: shared-app-cluster
   CLUSTER_LOCATION: us-central1-a
-  DEPLOY_TIMEOUT: "10m"  # 增加部署超时时间
+  DEPLOY_TIMEOUT: "10m"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # 添加 job 超时时间
+    timeout-minutes: 15
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     
-    # 添加并发控制
     concurrency: 
       group: ${{ github.workflow }}-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
       cancel-in-progress: false
@@ -38,6 +37,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: 设置环境变量
+      id: env
       run: |
         # 设置环境
         if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -47,24 +47,15 @@ jobs:
         else
           ENVIRONMENT="staging"
         fi
-        
-        if [[ -z "${ENVIRONMENT}" ]]; then
-          echo "错误: 无法确定部署环境"
-          exit 1
-        fi
-        echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
+        echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_OUTPUT
         
         # 设置镜像信息
-        if ! PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | base64 -d | jq -r '.project_id'); then
-          echo "错误: 无法解析项目 ID"
-          exit 1
-        fi
-        
+        PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | base64 -d | jq -r '.project_id')
         IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
         REGISTRY_PATH="us-central1-docker.pkg.dev/${PROJECT_ID}/app/${APP_NAME}:${IMAGE_TAG}"
         
-        echo "PROJECT_ID=${PROJECT_ID}" >> $GITHUB_ENV
-        echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_ENV
+        echo "PROJECT_ID=${PROJECT_ID}" >> $GITHUB_OUTPUT
+        echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_OUTPUT
     
     - name: 设置 Google Cloud 认证
       uses: google-github-actions/auth@v1
@@ -82,69 +73,64 @@ jobs:
       with:
         cluster_name: ${{ env.CLUSTER_NAME }}
         location: ${{ env.CLUSTER_LOCATION }}
-        project_id: ${{ env.PROJECT_ID }}
+        project_id: ${{ steps.env.outputs.PROJECT_ID }}
+    
+    - name: 准备部署配置
+      run: |
+        # 创建 kustomization.yaml 的补丁
+        cat > image-patch.yaml << EOF
+        apiVersion: kustomize.config.k8s.io/v1beta1
+        kind: Kustomization
+        images:
+        - name: ${{ env.APP_NAME }}
+          newName: us-central1-docker.pkg.dev/${{ steps.env.outputs.PROJECT_ID }}/app/${{ env.APP_NAME }}
+          newTag: $(echo ${{ github.sha }} | cut -c1-7)
+        EOF
     
     - name: 部署应用
       run: |
-        set -e  # 遇到错误立即退出
-        
-        echo "开始部署到 ${{ env.ENVIRONMENT }} 环境..."
-        
         # 确保命名空间存在
-        if ! kubectl create namespace ${{ env.ENVIRONMENT }} --dry-run=client -o yaml | kubectl apply -f -; then
-          echo "错误: 无法创建或更新命名空间"
-          exit 1
-        fi
+        kubectl create namespace ${{ steps.env.outputs.ENVIRONMENT }} --dry-run=client -o yaml | kubectl apply -f -
         
         # 切换到目标命名空间
-        kubectl config set-context --current --namespace=${{ env.ENVIRONMENT }}
-        
-        # 保存当前版本用于回滚
-        CURRENT_REVISION=$(kubectl get deployment ${{ env.APP_NAME }} -o jsonpath='{.metadata.generation}' 2>/dev/null || echo "0")
+        kubectl config set-context --current --namespace=${{ steps.env.outputs.ENVIRONMENT }}
         
         # 部署应用
-        echo "使用镜像: ${{ env.REGISTRY_PATH }}"
-        if ! kustomize build devops/kubernetes/overlays/${{ env.ENVIRONMENT }} \
+        kustomize build devops/kubernetes/overlays/${{ steps.env.outputs.ENVIRONMENT }} \
           --load-restrictor LoadRestrictionsNone \
-          --image ${{ env.APP_NAME }}=${{ env.REGISTRY_PATH }} | \
-          kubectl apply -f -; then
-          echo "错误: 部署失败"
-          exit 1
-        fi
+          --enable-alpha-plugins \
+          --kustomize-plugin-dir image-patch.yaml | \
+          kubectl apply -f -
         
         # 等待部署完成
-        echo "等待部署完成..."
-        if ! kubectl rollout status deployment/${{ env.APP_NAME }} --timeout=${{ env.DEPLOY_TIMEOUT }}; then
-          echo "错误: 部署超时，开始回滚..."
-          kubectl rollout undo deployment/${{ env.APP_NAME }} --to-revision=$CURRENT_REVISION
-          exit 1
-        fi
-        
-        # 验证部署状态
-        echo "验证部署状态..."
+        kubectl rollout status deployment/${{ env.APP_NAME }} --timeout=${{ env.DEPLOY_TIMEOUT }}
+    
+    - name: 验证部署
+      run: |
+        # 检查 Pod 状态
         READY_PODS=$(kubectl get pods -l app=${{ env.APP_NAME }} -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true" || echo "0")
+        TOTAL_PODS=$(kubectl get pods -l app=${{ env.APP_NAME }} --no-headers | wc -l)
+        
+        echo "Pod 状态: ${READY_PODS}/${TOTAL_PODS} 就绪"
+        
         if [ "$READY_PODS" -eq 0 ]; then
-          echo "错误: 没有就绪的 Pod"
+          echo "错误: 部署验证失败"
           kubectl get pods -l app=${{ env.APP_NAME }}
           kubectl describe pods -l app=${{ env.APP_NAME }}
           exit 1
         fi
-        
-        echo "部署成功完成"
     
     - name: 部署报告
       if: always()
       run: |
-        echo "==================== 部署报告 ===================="
-        echo "部署状态: ${{ job.status }}"
-        echo "环境: ${{ env.ENVIRONMENT }}"
-        echo "镜像: ${{ env.REGISTRY_PATH }}"
-        echo "时间: $(date)"
-        echo "提交: ${{ github.sha }}"
+        cat << EOF
+        ==================== 部署报告 ====================
+        状态: ${{ job.status }}
+        环境: ${{ steps.env.outputs.ENVIRONMENT }}
+        镜像: ${{ steps.env.outputs.REGISTRY_PATH }}
+        时间: $(date)
+        提交: ${{ github.sha }}
         
-        if [[ "${{ job.status }}" == "failure" ]]; then
-          echo "部署失败，请检查以上日志了解详细信息"
-          kubectl get pods -l app=${{ env.APP_NAME }} || true
-          kubectl describe pods -l app=${{ env.APP_NAME }} || true
-        fi
-        echo "================================================"
+        $(kubectl get pods -l app=${{ env.APP_NAME }} -o wide)
+        =================================================
+        EOF
