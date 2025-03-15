@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: prod
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "prod-app-ip"
+    networking.gke.io/managed-certificates: "prod-app-cert"
+    # 如果需要 CDN
+    # networking.gke.io/v1beta1.FrontendConfig: "prod-app-frontend-config"
+spec:
+  rules:
+  - host: app.example.com  # 替换为实际域名
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: prod-app-server
+            port:
+              number: 8080 

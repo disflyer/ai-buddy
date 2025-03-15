@@ -5,71 +5,94 @@
 ## 功能特性
 
 - Kubernetes 集群自动创建和配置
-- 通过命名空间隔离 prod 和 staging 环境
+- 单集群多环境架构（通过命名空间隔离 prod 和 staging 环境）
 - WebSocket 服务部署和配置
 - 自动从 Hugging Face 拉取模型到 Pod
 
 ## 目录结构
 
 ```
-terraform-multi-cloud/
-├── modules/
-│   ├── infra/
-│   │   └── gcp/              # GCP 基础设施模块
-│   │       ├── main.tf       # GKE 集群创建
-│   │       ├── variables.tf  # 变量定义
-│   │       └── outputs.tf    # 输出定义
-│   └── k8s/                  # Kubernetes 应用模块
-│       ├── main.tf           # 基础配置
-│       ├── app.tf            # 应用部署
-│       ├── model.tf          # 模型加载
-│       ├── variables.tf      # 变量定义
-│       └── outputs.tf        # 输出定义
-└── environments/
-    ├── prod/                 # 生产环境
-    │   ├── main.tf           # 主配置
-    │   ├── variables.tf      # 变量定义
-    │   └── terraform.tfvars  # 环境变量值
-    └── staging/              # 预发环境
-        ├── main.tf           # 主配置
-        ├── variables.tf      # 变量定义
-        └── terraform.tfvars  # 环境变量值
+devops/
+├── terraform/                     # 基础设施层
+│   ├── modules/                   # 可复用模块
+│   │   └── infra/                 # 基础设施模块
+│   │       └── gcp/               # GCP 实现
+│   └── main/                      # 主集群配置
+│       ├── main.tf                # 主配置文件
+│       ├── variables.tf           # 变量定义
+│       └── terraform.tfvars       # 变量值
+├── kubernetes/                    # 应用层
+│   ├── namespaces/                # 命名空间定义
+│   ├── base/                      # 基础应用配置
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   └── configmap.yaml
+│   └── overlays/                  # 环境特定覆盖
+│       ├── prod/
+│       └── staging/
+└── deploy.sh                      # 部署脚本
 ```
+
+## 架构说明
+
+本项目采用单集群多环境架构：
+
+1. **基础设施层**：
+   - 使用 Terraform 创建和管理单一共享 GKE 集群
+   - 集群内通过命名空间隔离不同环境
+   - 使用资源配额和网络策略确保环境隔离
+
+2. **应用层**：
+   - 使用 Kustomize 管理不同环境的应用配置
+   - 基础配置位于 `kubernetes/base/`
+   - 环境特定配置位于 `kubernetes/overlays/<环境>/`
 
 ## 使用方法
 
 ### 1. 前提条件
 
 - 安装 Terraform (v1.0.0+)
-- 配置云平台凭证 (GCP: 设置 GOOGLE_APPLICATION_CREDENTIALS 环境变量)
+- 安装 kubectl 和 kustomize
+- 配置 GCP 凭证 (设置 GOOGLE_APPLICATION_CREDENTIALS 环境变量)
 - 创建容器镜像并上传到容器仓库
 
 ### 2. 配置
 
-1. 进入对应环境目录（prod 或 staging）
-2. 编辑 `terraform.tfvars` 文件，设置您的项目配置：
+1. 编辑 `terraform/main/terraform.tfvars` 文件，设置您的项目配置：
    - 项目 ID
    - 区域
-   - 镜像信息
+   - 集群配置
    - 资源配置等
+
+2. 根据需要调整环境特定的 Kustomize 配置：
+   - `kubernetes/overlays/staging/`
+   - `kubernetes/overlays/prod/`
 
 ### 3. 部署
 
+使用部署脚本进行部署：
+
 ```bash
-# 初始化 Terraform
-cd environments/prod  # 或 staging
-terraform init
+# 部署基础设施和应用（默认 staging 环境）
+./deploy.sh
 
-# 查看执行计划
-terraform plan
+# 仅部署基础设施
+./deploy.sh --infra
 
-# 应用配置
-terraform apply
+# 仅部署应用
+./deploy.sh --app
+
+# 部署到生产环境
+./deploy.sh --env prod
+
+# 查看帮助
+./deploy.sh --help
 ```
 
 ### 4. 清理资源
 
 ```bash
+cd terraform/main
 terraform destroy
 ```
 
@@ -77,10 +100,9 @@ terraform destroy
 
 当需要扩展到其他云平台时，只需：
 
-1. 在 `modules/infra/` 下创建对应平台实现
+1. 在 `terraform/modules/infra/` 下创建对应平台实现
 2. 确保新模块保持相同的输出接口
-3. 更新 `k8s` 模块的云平台特定配置
-4. 创建新环境配置，指定 `cloud_provider` 参数
+3. 更新应用部署配置，适应新平台特性
 
 ## 注意事项
 

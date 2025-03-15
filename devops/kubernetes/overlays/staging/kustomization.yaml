@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: staging
+namePrefix: staging-
+
+resources:
+- ../../base
+
+patches:
+- path: configmap.yaml
+  target:
+    kind: ConfigMap
+    name: app-config
+
+images:
+- name: app-server
+  newName: us-central1-docker.pkg.dev/rare-attic-453703-a8/shared-app-registry/ai-buddy/app-server
+  newTag: latest 

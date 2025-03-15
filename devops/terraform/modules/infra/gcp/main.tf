@@ -30,6 +30,9 @@ resource "google_container_cluster" "primary" {
   # 删除默认节点池，使用单独管理的节点池
   remove_default_node_pool = true
   initial_node_count       = 1
+  
+  # 允许删除集群
+  deletion_protection = false
 
   # 启用 Workload Identity
   workload_identity_config {
@@ -39,7 +42,7 @@ resource "google_container_cluster" "primary" {
   # 默认使用标准磁盘，减少 SSD 需求
   node_config {
     disk_type = "pd-standard"
-    disk_size_gb = 10
+    disk_size_gb = 50
   }
   
   # 减少资源消耗的配置
@@ -72,10 +75,10 @@ resource "google_container_node_pool" "primary_nodes" {
   cluster    = google_container_cluster.primary.name
   node_count = var.node_count
 
-  # 添加自动修复配置，但禁用自动升级以减少系统开销
+  # 添加自动修复配置，但启用自动升级以符合 REGULAR 发布渠道要求
   management {
     auto_repair  = true
-    auto_upgrade = false
+    auto_upgrade = true  # 必须为 true，因为集群使用 REGULAR 发布渠道
   }
 
   node_config {

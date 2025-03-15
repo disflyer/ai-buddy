@@ -1,0 +1,84 @@
+name: Kubernetes 应用部署
+
+on:
+  workflow_run:
+    workflows: ["构建并推送容器镜像"]
+    types:
+      - completed
+  push:
+    branches: [ dev, main ]
+    paths:
+      - 'kubernetes/**'  # 仅当 Kubernetes 配置变更时触发
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境 (staging/prod)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+      
+    - name: 设置 Google Cloud 认证
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        create_credentials_file: true
+        
+    - name: 安装 gcloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+    
+    - name: 设置环境
+      id: env
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "ENVIRONMENT=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+        else
+          echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+        fi
+        echo "使用环境: ${{ env.ENVIRONMENT }}"
+        
+    - name: 获取 GKE 凭证
+      working-directory: terraform/main
+      run: |
+        PROJECT_ID=$(grep -E "^project_id\s*=" terraform.tfvars | cut -d'"' -f2)
+        REGION=$(grep -E "^region\s*=" terraform.tfvars | cut -d'"' -f2)
+        ZONE="${REGION}-a"
+        CLUSTER_NAME=$(terraform output -raw kubernetes_cluster_name)
+        REGISTRY_PATH=$(terraform output -raw image_registry_path)
+        
+        gcloud container clusters get-credentials ${CLUSTER_NAME} --zone ${ZONE} --project ${PROJECT_ID}
+        echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_ENV
+        
+    - name: 安装 kubectl 和 kustomize
+      run: |
+        curl -LO "https://dl.k8s.io/release/stable.txt"
+        curl -LO "https://dl.k8s.io/$(cat stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+        
+        curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+        sudo mv kustomize /usr/local/bin/
+        
+    - name: 更新镜像路径
+      run: |
+        sed -i "s|REGISTRY_PATH|${{ env.REGISTRY_PATH }}|g" kubernetes/overlays/${{ env.ENVIRONMENT }}/kustomization.yaml
+        
+    - name: 部署到 Kubernetes
+      run: kubectl apply -k kubernetes/overlays/${{ env.ENVIRONMENT }}/
+      
+    - name: 验证部署
+      run: |
+        kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${{ env.ENVIRONMENT }}-app-server 

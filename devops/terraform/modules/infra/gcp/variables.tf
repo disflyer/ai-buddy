@@ -35,7 +35,7 @@ variable "machine_type" {
 variable "disk_size_gb" {
   description = "节点磁盘大小 (GB)"
   type        = number
-  default     = 100
+  default     = 50
 }
 
 variable "gpu_type" {
@@ -48,4 +48,10 @@ variable "gpu_count" {
   description = "每个节点的 GPU 数量"
   type        = number
   default     = 0
+}
+
+variable "deletion_protection" {
+  description = "GKE 集群的删除保护设置"
+  type        = bool
+  default     = false
 } 
