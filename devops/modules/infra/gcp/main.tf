@@ -7,12 +7,6 @@ resource "google_artifact_registry_repository" "app_registry" {
   repository_id = "${var.env}-app-registry"
   format        = "DOCKER"
   description   = "${var.env} 环境的容器镜像仓库"
-  
-  # 配置仓库的访问控制
-  maven_config {
-    version_policy = "RELEASE"
-    allow_snapshot_overwrites = true
-  }
 }
 
 # 授予 GKE 服务账号访问 Artifact Registry 的权限
@@ -29,7 +23,7 @@ resource "google_artifact_registry_repository_iam_member" "registry_access" {
 # 创建 GKE 集群
 resource "google_container_cluster" "primary" {
   name     = "${var.env}-${var.cluster_name}"
-  location = var.region
+  location = "${var.region}-a"  # 使用单区域部署而非整个区域
   
   # 删除默认节点池，使用单独管理的节点池
   remove_default_node_pool = true
@@ -39,18 +33,53 @@ resource "google_container_cluster" "primary" {
   workload_identity_config {
     workload_pool = "${var.project_id}.svc.id.goog"
   }
+  
+  # 默认使用标准磁盘，减少 SSD 需求
+  node_config {
+    disk_type = "pd-standard"
+    disk_size_gb = 10
+  }
+  
+  # 减少资源消耗的配置
+  logging_service    = "none"  # 禁用默认的 Stackdriver 日志服务
+  monitoring_service = "none"  # 禁用默认的监控服务
+  
+  # 禁用默认的网络策略
+  network_policy {
+    enabled = false
+  }
+  
+  # 精简 GKE 集群控制平面
+  addons_config {
+    http_load_balancing {
+      disabled = false  # 保留 HTTP 负载均衡
+    }
+    horizontal_pod_autoscaling {
+      disabled = true  # 禁用 Pod 自动扩缩
+    }
+    network_policy_config {
+      disabled = true  # 禁用网络策略
+    }
+  }
 }
 
 # 创建节点池
 resource "google_container_node_pool" "primary_nodes" {
   name       = "${var.env}-pool"
-  location   = var.region
+  location   = "${var.region}-a"  # 使用单区域部署而非整个区域
   cluster    = google_container_cluster.primary.name
   node_count = var.node_count
+
+  # 添加自动修复配置，但禁用自动升级以减少系统开销
+  management {
+    auto_repair  = true
+    auto_upgrade = false
+  }
 
   node_config {
     machine_type = var.machine_type
     disk_size_gb = var.disk_size_gb
+    disk_type    = "pd-standard"
     
     # 添加节点标签
     labels = {
