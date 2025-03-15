@@ -108,8 +108,8 @@ resource "google_container_cluster" "primary" {
     }
     
     auto_provisioning_defaults {
-      disk_size = var.cluster_tier.disk_size_gb
-      disk_type = "pd-standard"
+      disk_size = 30  # 减小系统盘大小
+      disk_type = "pd-balanced"  # 使用平衡型持久化磁盘
       oauth_scopes = [
         "https://www.googleapis.com/auth/devstorage.read_only",
         "https://www.googleapis.com/auth/logging.write",
