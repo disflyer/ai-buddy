@@ -3,54 +3,43 @@ name: Kubernetes 应用部署
 on:
   workflow_run:
     workflows: ["构建并推送容器镜像"]
-    types:
-      - completed
+    types: [completed]
   push:
     branches: [ dev, main ]
-    paths:
-      - 'devops/kubernetes/**'  # 仅当 Kubernetes 配置变更时触发
+    paths: ['devops/kubernetes/**']
   workflow_dispatch:
     inputs:
       environment:
-        description: '部署环境 (staging/prod)'
+        description: '部署环境'
         required: true
         default: 'staging'
         type: choice
-        options:
-          - staging
-          - prod
+        options: [staging, prod]
 
-# 环境变量配置
 env:
-  DEFAULT_REGISTRY_PREFIX: "us-central1-docker.pkg.dev"
-  # 固定集群配置 - 不随环境变化
-  CLUSTER_NAME: "shared-app-cluster"
-  CLUSTER_LOCATION: "us-central1-a"
-  # 部署配置
-  ROLLOUT_TIMEOUT: "300s"
-  APP_NAME: "app-server"
+  APP_NAME: app-server
+  CLUSTER_NAME: shared-app-cluster
+  CLUSTER_LOCATION: us-central1-a
+  DEPLOY_TIMEOUT: "10m"  # 增加部署超时时间
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # 添加 job 超时时间
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    timeout-minutes: 20
     
-    # 并发控制
-    concurrency:
+    # 添加并发控制
+    concurrency: 
       group: ${{ github.workflow }}-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
       cancel-in-progress: false
     
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
     
     - name: 设置环境变量
-      id: env
       run: |
-        # 设置部署环境
+        # 设置环境
         if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           ENVIRONMENT="${{ github.event.inputs.environment }}"
         elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
@@ -58,174 +47,104 @@ jobs:
         else
           ENVIRONMENT="staging"
         fi
+        
+        if [[ -z "${ENVIRONMENT}" ]]; then
+          echo "错误: 无法确定部署环境"
+          exit 1
+        fi
         echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
         
-        # 部署 ID 用于追踪和缓存无效化
-        DEPLOY_ID="$(date +%Y%m%d-%H%M%S)"
-        echo "DEPLOY_ID=${DEPLOY_ID}" >> $GITHUB_ENV
+        # 设置镜像信息
+        if ! PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | base64 -d | jq -r '.project_id'); then
+          echo "错误: 无法解析项目 ID"
+          exit 1
+        fi
+        
+        IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+        REGISTRY_PATH="us-central1-docker.pkg.dev/${PROJECT_ID}/app/${APP_NAME}:${IMAGE_TAG}"
+        
+        echo "PROJECT_ID=${PROJECT_ID}" >> $GITHUB_ENV
+        echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_ENV
     
-    - name: 设置 Google Cloud 认证和提取项目信息
-      id: auth
+    - name: 设置 Google Cloud 认证
       uses: google-github-actions/auth@v1
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
-        create_credentials_file: true
-        export_environment_variables: true
-    
-    - name: 提取 GCP 项目信息
-      id: project
-      run: |
-        # 从服务账号密钥提取项目 ID
-        echo "提取 GCP 项目信息..."
-        PROJECT_ID=$(cat $GOOGLE_APPLICATION_CREDENTIALS | jq -r '.project_id')
-        echo "PROJECT_ID=${PROJECT_ID}" >> $GITHUB_ENV
-        echo "project_id=${PROJECT_ID}" >> $GITHUB_OUTPUT
-        
-        # 构建镜像仓库路径
-        REGISTRY_PATH="${{ env.DEFAULT_REGISTRY_PREFIX }}/${PROJECT_ID}/app"
-        echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_ENV
-        
-        # 使用短 commit ID 作为镜像标签
-        SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-        echo "使用短 commit ID 作为镜像标签: ${SHORT_SHA}"
-        echo "SHORT_SHA=${SHORT_SHA}" >> $GITHUB_ENV
-        
-        # 构建完整镜像路径（带标签）
-        FULL_IMAGE="${REGISTRY_PATH}/${{ env.APP_NAME }}:${SHORT_SHA}"
-        echo "FULL_IMAGE=${FULL_IMAGE}" >> $GITHUB_ENV
     
     - name: 设置 Kubernetes 工具
       uses: yokawasa/action-setup-kube-tools@v0.9.3
       with:
         kubectl: '1.28.3'
         kustomize: '5.1.1'
-        setup-tools: kubectl,kustomize
     
     - name: 获取 GKE 凭证
-      id: get-credentials
       uses: google-github-actions/get-gke-credentials@v1
       with:
         cluster_name: ${{ env.CLUSTER_NAME }}
         location: ${{ env.CLUSTER_LOCATION }}
         project_id: ${{ env.PROJECT_ID }}
     
-    - name: 准备并部署
+    - name: 部署应用
       run: |
-        echo "准备部署到 ${{ env.ENVIRONMENT }} 环境..."
+        set -e  # 遇到错误立即退出
         
-        # 定义辅助函数
-        function log_info() {
-          echo -e "\033[0;32m[INFO]\033[0m $1"
-        }
+        echo "开始部署到 ${{ env.ENVIRONMENT }} 环境..."
         
-        function log_warn() {
-          echo -e "\033[0;33m[WARN]\033[0m $1"
-        }
-        
-        function log_error() {
-          echo -e "\033[0;31m[ERROR]\033[0m $1"
-        }
-        
-        function fail() {
-          log_error "$1"
+        # 确保命名空间存在
+        if ! kubectl create namespace ${{ env.ENVIRONMENT }} --dry-run=client -o yaml | kubectl apply -f -; then
+          echo "错误: 无法创建或更新命名空间"
           exit 1
-        }
-        
-        function run_kustomize() {
-          kustomize build devops/kubernetes/overlays/${{ env.ENVIRONMENT }} \
-            --load-restrictor LoadRestrictionsNone \
-            --kustomize-image ${{ env.APP_NAME }}=${{ env.FULL_IMAGE }}
-        }
-        
-        # 验证集群连接
-        log_info "验证集群连接..."
-        kubectl config current-context || fail "无法获取集群上下文"
-        
-        # 检查集群节点状态
-        log_info "检查集群节点状态..."
-        kubectl get nodes || log_warn "无法获取节点信息"
-        
-        # 检查节点资源使用情况
-        if kubectl get apiservice v1beta1.metrics.k8s.io &>/dev/null; then
-          log_info "节点资源使用情况:"
-          kubectl top nodes || log_warn "无法获取节点资源使用情况"
         fi
         
-        # 准备命名空间
-        log_info "准备命名空间 ${{ env.ENVIRONMENT }}..."
-        if ! kubectl get namespace ${{ env.ENVIRONMENT }} &>/dev/null; then
-          kubectl create namespace ${{ env.ENVIRONMENT }} || fail "无法创建命名空间"
-        fi
-        
+        # 切换到目标命名空间
         kubectl config set-context --current --namespace=${{ env.ENVIRONMENT }}
-        log_info "当前命名空间: $(kubectl config view --minify -o jsonpath='{..namespace}')"
         
-        # 验证配置
-        [ -z "${{ env.DEFAULT_REGISTRY_PREFIX }}" ] && fail "DEFAULT_REGISTRY_PREFIX 未设置"
-        [ -z "${{ env.FULL_IMAGE }}" ] && fail "FULL_IMAGE 未设置"
-        
-        log_info "使用镜像: ${{ env.FULL_IMAGE }}"
-        
-        # 记录当前部署版本（用于回滚）
-        log_info "获取当前部署版本..."
+        # 保存当前版本用于回滚
         CURRENT_REVISION=$(kubectl get deployment ${{ env.APP_NAME }} -o jsonpath='{.metadata.generation}' 2>/dev/null || echo "0")
         
-        # 预览配置
-        log_info "预览部署配置..."
-        run_kustomize | grep -E "kind:|name:|image:|annotations:" | grep -B2 -A2 "kind: Deployment" || log_warn "无法预览配置"
+        # 部署应用
+        echo "使用镜像: ${{ env.REGISTRY_PATH }}"
+        if ! kustomize build devops/kubernetes/overlays/${{ env.ENVIRONMENT }} \
+          --load-restrictor LoadRestrictionsNone \
+          --image ${{ env.APP_NAME }}=${{ env.REGISTRY_PATH }} | \
+          kubectl apply -f -; then
+          echo "错误: 部署失败"
+          exit 1
+        fi
         
-        # 验证配置
-        log_info "验证部署配置..."
-        run_kustomize | kubectl apply --dry-run=client -f - || fail "部署配置验证失败"
-        
-        # 执行部署
-        log_info "执行部署..."
-        run_kustomize | kubectl apply -f - || fail "部署失败"
+        # 等待部署完成
+        echo "等待部署完成..."
+        if ! kubectl rollout status deployment/${{ env.APP_NAME }} --timeout=${{ env.DEPLOY_TIMEOUT }}; then
+          echo "错误: 部署超时，开始回滚..."
+          kubectl rollout undo deployment/${{ env.APP_NAME }} --to-revision=$CURRENT_REVISION
+          exit 1
+        fi
         
         # 验证部署状态
-        log_info "验证部署状态..."
-        if ! kubectl rollout status deployment/${{ env.APP_NAME }} --timeout=${{ env.ROLLOUT_TIMEOUT }}; then
-          log_error "部署超时或失败，开始回滚..."
-          kubectl rollout undo deployment/${{ env.APP_NAME }} --to-revision=$CURRENT_REVISION
-          fail "部署失败并已回滚"
-        fi
-        
-        # 检查 Pod 状态
-        log_info "检查 Pod 状态..."
-        sleep 10  # 给 Pod 一些启动时间
-        
+        echo "验证部署状态..."
         READY_PODS=$(kubectl get pods -l app=${{ env.APP_NAME }} -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true" || echo "0")
-        TOTAL_PODS=$(kubectl get pods -l app=${{ env.APP_NAME }} --no-headers | wc -l)
-        
-        log_info "就绪 Pod 数量: ${READY_PODS}/${TOTAL_PODS}"
         if [ "$READY_PODS" -eq 0 ]; then
-          log_error "未找到就绪的 Pod，开始回滚..."
+          echo "错误: 没有就绪的 Pod"
           kubectl get pods -l app=${{ env.APP_NAME }}
           kubectl describe pods -l app=${{ env.APP_NAME }}
-          kubectl rollout undo deployment/${{ env.APP_NAME }} --to-revision=$CURRENT_REVISION
-          fail "部署失败并已回滚"
+          exit 1
         fi
         
-        # 检查 Pod 日志
-        log_info "检查 Pod 日志..."
-        kubectl logs -l app=${{ env.APP_NAME }} --tail=50 || log_warn "无法获取 Pod 日志"
-        
-        log_info "部署成功完成"
+        echo "部署成功完成"
     
     - name: 部署报告
       if: always()
       run: |
-        echo "生成部署报告..."
-        
-        # 直接输出部署报告，无需临时文件
         echo "==================== 部署报告 ===================="
         echo "部署状态: ${{ job.status }}"
-        echo "部署环境: ${{ env.ENVIRONMENT }}"
-        echo "部署ID: ${{ env.DEPLOY_ID }}"
-        echo "部署时间: $(date)"
-        echo "部署用户: ${{ github.actor }}"
-        echo "提交SHA: ${{ github.sha }}"
-        echo "镜像标签: ${{ env.SHORT_SHA }}"
-        echo "镜像仓库: ${{ env.FULL_IMAGE }}"
-        echo "集群: ${{ env.CLUSTER_NAME }}"
-        echo "================================================="
+        echo "环境: ${{ env.ENVIRONMENT }}"
+        echo "镜像: ${{ env.REGISTRY_PATH }}"
+        echo "时间: $(date)"
+        echo "提交: ${{ github.sha }}"
+        
+        if [[ "${{ job.status }}" == "failure" ]]; then
+          echo "部署失败，请检查以上日志了解详细信息"
+          kubectl get pods -l app=${{ env.APP_NAME }} || true
+          kubectl describe pods -l app=${{ env.APP_NAME }} || true
+        fi
+        echo "================================================"
