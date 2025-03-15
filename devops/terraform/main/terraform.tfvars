@@ -1,8 +1,8 @@
-project_id        = "rare-attic-453703-a8"
-region            = "us-central1"
-cluster_name      = "shared-cluster"
-node_count        = 2
-machine_type      = "e2-standard-2"
-disk_size_gb      = 50
-gpu_type          = ""  # 如需 GPU，填写如 "nvidia-tesla-t4"
-gpu_count         = 0   # GPU 数量，默认 0 表示不使用 GPU 
+project_id   = "rare-attic-453703-a8"
+region       = "us-central1"
+cluster_name = "shared-cluster"
+node_count   = 2
+machine_type = "e2-standard-2"
+disk_size_gb = 50
+gpu_type     = "" # 如需 GPU，填写如 "nvidia-tesla-t4"
+gpu_count    = 0  # GPU 数量，默认 0 表示不使用 GPU 

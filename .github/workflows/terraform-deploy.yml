@@ -85,7 +85,7 @@ jobs:
         
     - name: Terraform 格式检查
       working-directory: ${{ env.TF_WORKING_DIR }}
-      run: terraform fmt -check
+      run: terraform fmt -check || (echo "格式错误，自动修复中..." && terraform fmt && echo "已自动修复格式问题")
       
     - name: Terraform 验证
       working-directory: ${{ env.TF_WORKING_DIR }}

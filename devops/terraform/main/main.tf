@@ -1,7 +1,7 @@
 # 设置 GCP 提供者
 provider "google" {
-  project     = var.project_id
-  region      = var.region
+  project = var.project_id
+  region  = var.region
   # credentials 会自动从 GOOGLE_APPLICATION_CREDENTIALS 环境变量获取
 }
 
