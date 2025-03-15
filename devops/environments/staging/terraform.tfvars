@@ -1,7 +1,7 @@
 project_id        = "rare-attic-453703-a8"
 region            = "us-central1"
 cluster_name      = "app-cluster"
-node_count        = 2
+node_count        = 1
 machine_type      = "e2-standard-2"
 disk_size_gb      = 50
 gpu_type          = ""  # 如需 GPU，填写如 "nvidia-tesla-t4"
