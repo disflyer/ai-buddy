@@ -42,6 +42,6 @@ inputs = {
   
   # 允许GKE节点池的服务账号访问Secret
   secret_accessor_members = [
-    "serviceAccount:${dependency.gke_cluster.outputs.service_account}"
+    "serviceAccount:${dependency.gke_cluster.outputs.service_account_email}"
   ]
 } 
