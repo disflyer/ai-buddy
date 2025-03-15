@@ -164,12 +164,23 @@ if [[ "$DEPLOY_APP" == "true" ]]; then
     cd ../..
   fi
   
+  # 设置资源名称前缀
+  if [[ "$ENVIRONMENT" == "staging" ]]; then
+    RESOURCE_PREFIX="staging-"
+  elif [[ "$ENVIRONMENT" == "prod" ]]; then
+    RESOURCE_PREFIX="prod-"
+  else
+    RESOURCE_PREFIX=""
+  fi
+  DEPLOYMENT_NAME="${RESOURCE_PREFIX}app-server"
+  
   # 生成版本标签
   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
   GIT_COMMIT=$(git rev-parse --short HEAD || echo "latest")
   IMAGE_TAG="${GIT_COMMIT}-${TIMESTAMP}"
   
   echo -e "${YELLOW}使用镜像标签: ${IMAGE_TAG}${NC}"
+  echo -e "${YELLOW}部署名称: ${DEPLOYMENT_NAME}${NC}"
   
   # 更新镜像配置
   echo -e "${YELLOW}更新镜像仓库路径和标签...${NC}"
@@ -182,9 +193,14 @@ if [[ "$DEPLOY_APP" == "true" ]]; then
   echo -e "${YELLOW}应用 Kubernetes 配置...${NC}"
   kubectl apply -k .
   
+  # 等待部署完成
+  echo -e "${YELLOW}等待部署完成...${NC}"
+  kubectl rollout status deployment/${DEPLOYMENT_NAME} --timeout=5m
+  
   # 记录部署版本
   echo -e "${YELLOW}记录部署版本信息...${NC}"
   echo "最近部署版本: ${IMAGE_TAG}" > ../../../.deploy-version-${ENVIRONMENT}
+  echo "部署名称: ${DEPLOYMENT_NAME}" >> ../../../.deploy-version-${ENVIRONMENT}
   
   cd ../../..
   
