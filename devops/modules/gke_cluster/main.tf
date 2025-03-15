@@ -10,39 +10,18 @@ data "google_compute_subnetwork" "subnet" {
   project = var.project_id
 }
 
-# 尝试获取现有的 NAT Router（如果存在）
-data "google_compute_router" "existing_router" {
-  count   = var.create_network_resources ? 0 : 1
+# 引用现有的 NAT Router
+data "google_compute_router" "router" {
   name    = "${var.env}-nat-router"
   region  = var.region
   network = data.google_compute_network.vpc.name
 }
 
-# 条件创建 NAT Router
-resource "google_compute_router" "router" {
-  count   = var.create_network_resources ? 1 : 0
-  name    = "${var.env}-nat-router"
+# 引用现有的 NAT 配置
+data "google_compute_router_nat" "nat" {
+  name    = "${var.env}-cloud-nat"
+  router  = data.google_compute_router.router.name
   region  = var.region
-  network = data.google_compute_network.vpc.name
-}
-
-locals {
-  # 使用三元运算符选择正确的 router 名称
-  router_name = var.create_network_resources ? (
-    length(google_compute_router.router) > 0 ? google_compute_router.router[0].name : ""
-  ) : (
-    length(data.google_compute_router.existing_router) > 0 ? data.google_compute_router.existing_router[0].name : ""
-  )
-}
-
-# NAT网关配置
-resource "google_compute_router_nat" "nat" {
-  count                              = var.create_network_resources ? 1 : 0
-  name                               = "${var.env}-cloud-nat"
-  router                             = local.router_name
-  region                             = var.region
-  nat_ip_allocate_option             = "AUTO_ONLY"
-  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 }
 
 # 添加环境标签到集群资源
@@ -180,7 +159,7 @@ resource "google_container_cluster" "primary" {
   remove_default_node_pool = true
 
   depends_on = [
-    google_compute_router_nat.nat
+    data.google_compute_router_nat.nat
   ]
 }
 

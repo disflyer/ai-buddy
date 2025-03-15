@@ -12,11 +12,11 @@ terraform {
 # 依赖关系
 dependency "gke_cluster" {
   config_path = "../gke_cluster"
-  
+
   # 配置依赖项输出的映射
   mock_outputs = {
-    cluster_name = "ai-buddy-cluster"
-    endpoint     = "https://mock-endpoint"
+    cluster_name           = "ai-buddy-cluster"
+    endpoint               = "https://mock-endpoint"
     cluster_ca_certificate = "mock-cert"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
@@ -37,11 +37,11 @@ EOF
 
 # 模块特定输入
 inputs = {
-  env       = "staging"
-  region    = "us-central1"
-  
+  env    = "staging"
+  region = "us-central1"
+
   # 允许GKE节点池的服务账号访问Secret
   secret_accessor_members = [
     "serviceAccount:${dependency.gke_cluster.outputs.service_account_email}"
   ]
-} 
+}

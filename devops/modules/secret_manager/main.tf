@@ -10,12 +10,19 @@ data "google_project" "project" {}
 # 获取Google Cloud客户端配置
 data "google_client_config" "default" {}
 
+# 获取GKE集群信息
+data "google_container_cluster" "target_cluster" {
+  name     = var.cluster_name
+  location = "${var.region}-a"
+  project  = var.project_id
+}
+
 # 创建Secret Manager密钥
 resource "google_secret_manager_secret" "config_yaml" {
   secret_id = "${var.env}_config_yaml"
   
   replication {
-    automatic = true
+    auto = true
   }
 }
 

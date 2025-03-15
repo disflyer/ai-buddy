@@ -5,8 +5,8 @@
 remote_state {
   backend = "gcs"
   config = {
-    bucket  = "tfstate-rare-attic"
-    prefix  = "${path_relative_to_include()}"
+    bucket      = "tfstate-rare-attic"
+    prefix      = "${path_relative_to_include()}"
     credentials = "${get_original_terragrunt_dir()}/../../../service-account.json"
   }
   generate = {
@@ -46,7 +46,7 @@ EOF
 locals {
   # 环境名称
   env = "staging"
-  
+
   # 项目配置
   project_id = "rare-attic-453703-a8"
   region     = "us-central1"
@@ -57,7 +57,7 @@ inputs = {
   env        = local.env
   project_id = local.project_id
   region     = local.region
-  
+
   # 公共标签
   common_tags = {
     environment = local.env

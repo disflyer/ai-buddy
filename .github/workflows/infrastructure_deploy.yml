@@ -29,6 +29,8 @@ env:
   ENV_STAGING: staging
   NAMESPACE_PROD: production
   NAMESPACE_STAGING: staging
+  TF_VERSION: "1.5.7"  # 使用稳定版本
+  TERRAGRUNT_VERSION: "0.45.0"  # 使用稳定版本
   
 jobs:
   deploy-infrastructure:
@@ -63,19 +65,24 @@ jobs:
       
       - name: 设置Terraform和Terragrunt
         run: |
-          # 安装Terraform
+          echo "安装 Terraform ${{ env.TF_VERSION }}..."
           wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-          sudo apt update && sudo apt install terraform=1.0.0
+          sudo apt update
+          sudo apt install terraform=${{ env.TF_VERSION }}* -y
           
-          # 安装Terragrunt
-          wget https://github.com/gruntwork-io/terragrunt/releases/download/v0.38.0/terragrunt_linux_amd64
+          echo "安装 Terragrunt ${{ env.TERRAGRUNT_VERSION }}..."
+          wget https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
           chmod +x terragrunt_linux_amd64
           sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+          
+          # 验证安装
+          terraform version
+          terragrunt --version
       
       - name: 设置Google Cloud身份验证
         id: auth
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
           project_id: ${{ env.PROJECT_ID }}
@@ -83,16 +90,50 @@ jobs:
           export_environment_variables: true
           token_format: 'access_token'
           access_token_lifetime: '3600s'
+          cleanup_credentials: true
       
       - name: 复制凭证文件
         run: |
           cp ${{ steps.auth.outputs.credentials_file_path }} devops/service-account.json
+          chmod 600 devops/service-account.json
       
       - name: 设置Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+        uses: google-github-actions/setup-gcloud@v2
         with:
-          version: '>= 363.0.0'
-          install_components: 'kubectl,gke-gcloud-auth-plugin'
+          version: '>=363.0.0'
+          install_components: 'kubectl,gke-gcloud-auth-plugin,beta'
+      
+      - name: 启用必要的API服务
+        run: |
+          echo "启用基础设施部署所需的API服务..."
+          
+          # 定义需要启用的API列表
+          REQUIRED_APIS=(
+            "compute.googleapis.com"
+            "container.googleapis.com"
+            "servicenetworking.googleapis.com"
+            "cloudresourcemanager.googleapis.com"
+            "iam.googleapis.com"
+            "serviceusage.googleapis.com"
+            "secretmanager.googleapis.com"
+            "artifactregistry.googleapis.com"
+            "cloudbuild.googleapis.com"
+            "cloudkms.googleapis.com"
+          )
+          
+          # 检查并启用所需的API
+          for api in "${REQUIRED_APIS[@]}"; do
+            echo "正在检查 $api..."
+            if ! gcloud services list --enabled --filter="name:$api" --format="get(name)" | grep -q "^$api$"; then
+              echo "正在启用 $api..."
+              gcloud services enable $api || {
+                echo "警告：无法启用 $api，可能需要在控制台手动启用"
+                continue
+              }
+            else
+              echo "$api 已启用"
+            fi
+          done
       
       # 配置 Docker 认证
       - name: 配置 Docker 认证
@@ -106,28 +147,28 @@ jobs:
           echo "验证 Docker 认证配置..."
           gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev
           gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://gcr.io
-      
-      # 启用必要的API服务
-      - name: 启用必要的API服务
+
+      # 验证项目权限
+      - name: 验证项目权限
         run: |
-          echo "启用基础设施部署所需的API服务..."
-          # 检查当前用户是否有权限启用服务
-          if gcloud services list --available | grep compute.googleapis.com; then
-            echo "正在尝试启用必要的API..."
-            # 尝试启用所需API
-            gcloud services enable compute.googleapis.com \
-              servicenetworking.googleapis.com \
-              cloudresourcemanager.googleapis.com \
-              iam.googleapis.com \
-              container.googleapis.com \
-              serviceusage.googleapis.com || echo "警告：部分API可能需要手动在控制台启用"
-          else
-            echo "警告：当前服务账号可能没有权限启用API。如果后续部署失败，请手动在GCP控制台启用必要API。"
-          fi
+          echo "验证项目权限..."
+          
+          # 检查项目访问权限
+          gcloud projects describe ${{ env.PROJECT_ID }} || {
+            echo "错误：无法访问项目 ${{ env.PROJECT_ID }}"
+            exit 1
+          }
+          
+          # 检查服务账号权限
+          gcloud iam service-accounts list || {
+            echo "错误：无法列出服务账号"
+            exit 1
+          }
 
       # 导入现有资源
       - name: 导入现有资源
         if: ${{ github.event.inputs.import_existing == 'true' }}
+        continue-on-error: true  # 允许导入失败继续执行
         env:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           ENV: ${{ env.DEPLOY_ENV }}
@@ -143,7 +184,15 @@ jobs:
         run: |
           echo "开始部署网络..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/network
-          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" -lock=false
+          
+          # 初始化 Terragrunt
+          terragrunt init -upgrade || exit 1
+          
+          # 运行 plan 检查配置
+          terragrunt plan -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" || exit 1
+          
+          # 应用配置
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" || exit 1
       
       # 部署GKE集群
       - name: 部署GKE集群
@@ -151,7 +200,15 @@ jobs:
         run: |
           echo "开始部署GKE集群..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/gke_cluster
-          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" -lock=false
+          
+          # 初始化 Terragrunt
+          terragrunt init -upgrade || exit 1
+          
+          # 运行 plan 检查配置
+          terragrunt plan -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" || exit 1
+          
+          # 应用配置
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" || exit 1
       
       # 部署Secret Manager
       - name: 部署Secret Manager
@@ -159,12 +216,33 @@ jobs:
         run: |
           echo "开始部署Secret Manager..."
           cd devops/environments/${{ env.DEPLOY_ENV }}/secret_manager
-          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" -lock=false
+          
+          # 初始化 Terragrunt
+          terragrunt init -upgrade || exit 1
+          
+          # 运行 plan 检查配置
+          terragrunt plan -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" || exit 1
+          
+          # 应用配置
+          terragrunt apply -auto-approve -var="env=${{ env.DEPLOY_ENV }}" -var="project_id=${{ env.PROJECT_ID }}" || exit 1
       
       # 创建命名空间
       - name: 创建命名空间
         if: env.DEPLOY_GKE_CLUSTER == 'true'
         run: |
+          echo "等待 GKE 集群就绪..."
+          # 等待集群就绪
+          for i in {1..30}; do
+            if gcloud container clusters describe ${{ env.GKE_CLUSTER_NAME }} \
+              --region ${{ env.GKE_REGION }} \
+              --project ${{ env.PROJECT_ID }} \
+              --format="get(status)" | grep -q "RUNNING"; then
+              break
+            fi
+            echo "等待集群就绪... $i/30"
+            sleep 10
+          done
+          
           # 获取GKE集群凭证
           gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} \
             --region ${{ env.GKE_REGION }} \
@@ -180,6 +258,13 @@ jobs:
       - name: 部署通知
         if: always()
         run: |
-          echo "基础设施部署完成"
+          STATUS="${{ job.status }}"
+          echo "基础设施部署 $STATUS"
           echo "部署环境: ${{ env.DEPLOY_ENV }}"
-          echo "部署组件: ${{ github.event.inputs.components }}" 
+          echo "部署组件: ${{ github.event.inputs.components }}"
+          
+          if [ "$STATUS" = "success" ]; then
+            echo "✅ 部署成功完成"
+          else
+            echo "❌ 部署过程中出现错误"
+          fi
