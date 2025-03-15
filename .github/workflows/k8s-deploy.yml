@@ -76,7 +76,7 @@ jobs:
         echo "project_id=${PROJECT_ID}" >> $GITHUB_OUTPUT
         
         # 通常集群名称可以根据环境推断
-        CLUSTER_NAME="ai-buddy-cluster"
+        CLUSTER_NAME="${{ env.ENVIRONMENT }}-app-cluster"
         echo "CLUSTER_NAME=${CLUSTER_NAME}" >> $GITHUB_ENV
         
         # 通常区域设置为 us-central1-a 或从服务账号区域确定
