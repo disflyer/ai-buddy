@@ -1,6 +1,6 @@
 project_id   = "rare-attic-453703-a8"
 region       = "us-central1"
-cluster_name = "shared-cluster"
+cluster_name = "app-cluster"
 node_count   = 2
 machine_type = "e2-standard-2"
 disk_size_gb = 50

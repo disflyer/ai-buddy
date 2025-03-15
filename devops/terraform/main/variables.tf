@@ -12,7 +12,7 @@ variable "region" {
 variable "cluster_name" {
   description = "Kubernetes 集群名称"
   type        = string
-  default     = "shared-cluster"
+  default     = "app-cluster"
 }
 
 variable "node_count" {

@@ -81,7 +81,7 @@ jobs:
         
         if ! terraform state list | grep -q "module.infra.google_container_cluster.primary"; then
           echo "导入 GKE 集群资源..."
-          terraform import module.infra.google_container_cluster.primary projects/rare-attic-453703-a8/zones/us-central1-a/clusters/shared-shared-cluster || echo "导入失败或资源不存在"
+          terraform import module.infra.google_container_cluster.primary projects/rare-attic-453703-a8/zones/us-central1-a/clusters/shared-app-cluster || echo "导入失败或资源不存在"
         fi
       env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
