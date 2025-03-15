@@ -31,19 +31,34 @@ jobs:
     name: 'Terraform 任务'
     runs-on: ubuntu-latest
     
-    # 确定环境
+    # 确定环境：基于分支的自动映射
     env:
-      TF_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
-    
+      # 设置默认环境为 staging
+      TF_ENVIRONMENT: staging
+
     steps:
       - name: 检出代码
         uses: actions/checkout@v3
+
+      # 根据分支设置环境
+      - name: 设置部署环境
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "TF_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "TF_ENVIRONMENT=prod" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "TF_ENVIRONMENT=staging" >> $GITHUB_ENV
+          fi
 
       - name: 设置 Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
+
+      - name: 显示目标环境
+        run: echo "当前任务将针对 ${{ env.TF_ENVIRONMENT }} 环境执行"
 
       - name: Terraform 格式化检查
         id: fmt
@@ -57,10 +72,24 @@ jobs:
       - name: Terraform 验证
         id: validate
         run: |
-          cd devops/environments/${{ env.TF_ENVIRONMENT }}
+          cd environments/${{ env.TF_ENVIRONMENT }}
           terraform init -backend=false -input=false
           terraform validate
 
+      # 创建临时凭证文件
+      - name: 准备 GCP 凭证文件
+        id: prepare_credentials
+        if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        run: |
+          # 创建凭证目录
+          mkdir -p ${{ github.workspace }}/gcp-credentials
+          # 从 Secret 写入临时凭证文件
+          echo '${{ secrets.GCP_SA_KEY }}' > ${{ github.workspace }}/gcp-credentials/service-account.json
+          # 设置环境变量（会在当前步骤和后续步骤中生效）
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/gcp-credentials/service-account.json" >> $GITHUB_ENV
+          # 验证文件存在
+          ls -la ${{ github.workspace }}/gcp-credentials/
+        
       # 只有在需要访问 GCP 的步骤前才设置认证
       - name: 设置 Google Cloud 认证
         id: auth
@@ -68,6 +97,9 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
           export_environment_variables: true
+          # 添加以确保 GOOGLE_APPLICATION_CREDENTIALS 环境变量存在
+          create_credentials_file: true
+          cleanup_credentials: false
         # 仅对计划和应用步骤执行，PR 检查或手动触发时
         if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
       
@@ -78,30 +110,45 @@ jobs:
           # project_id 参数是可选的，服务账号 JSON 已包含项目信息
         if: steps.auth.outcome == 'success'
 
+      # 打印环境变量，验证凭证路径已正确设置
+      - name: 验证环境变量
+        run: |
+          echo "GOOGLE_APPLICATION_CREDENTIALS 环境变量: $GOOGLE_APPLICATION_CREDENTIALS"
+          if [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+            echo "凭证文件存在"
+          else
+            echo "凭证文件不存在"
+            exit 1
+          fi
+        if: steps.prepare_credentials.outcome == 'success'
+
       - name: Terraform 初始化
         id: init
         run: |
-          cd devops/environments/${{ env.TF_ENVIRONMENT }}
+          cd environments/${{ env.TF_ENVIRONMENT }}
+          # 显式打印凭证路径，确保环境变量已设置
+          echo "使用凭证路径: $GOOGLE_APPLICATION_CREDENTIALS"
           terraform init -input=false
         if: steps.auth.outcome == 'success'
 
       - name: Terraform 计划
         id: plan
         run: |
-          cd devops/environments/${{ env.TF_ENVIRONMENT }}
+          cd environments/${{ env.TF_ENVIRONMENT }}
           terraform plan -input=false -no-color
         continue-on-error: true
         if: steps.init.outcome == 'success'
 
-      # 只有在符合条件时才执行应用步骤
+      # 修改执行条件，允许 dev 分支推送触发 staging 环境部署，main 分支推送触发 prod 环境部署
       - name: Terraform 应用
         id: apply
         if: |
           steps.plan.outcome == 'success' && 
           ((github.ref == 'refs/heads/main' && github.event_name == 'push') ||
-          (github.event_name == 'workflow_dispatch' && inputs.auto_approve))
+           (github.ref == 'refs/heads/dev' && github.event_name == 'push') ||
+           (github.event_name == 'workflow_dispatch' && inputs.auto_approve))
         run: |
-          cd devops/environments/${{ env.TF_ENVIRONMENT }}
+          cd environments/${{ env.TF_ENVIRONMENT }}
           terraform apply -auto-approve -input=false
 
       # 获取输出信息
@@ -109,7 +156,7 @@ jobs:
         id: outputs
         if: steps.apply.outcome == 'success'
         run: |
-          cd devops/environments/${{ env.TF_ENVIRONMENT }}
+          cd environments/${{ env.TF_ENVIRONMENT }}
           echo "SERVICE_ENDPOINT=$(terraform output -raw service_endpoint 2>/dev/null || echo '未找到服务端点')" >> $GITHUB_OUTPUT
           echo "IMAGE_REGISTRY_PATH=$(terraform output -raw image_registry_path 2>/dev/null || echo '未找到镜像仓库路径')" >> $GITHUB_OUTPUT
       
@@ -119,4 +166,11 @@ jobs:
         run: |
           echo "部署环境: ${{ env.TF_ENVIRONMENT }}"
           echo "服务访问端点: ${{ steps.outputs.outputs.SERVICE_ENDPOINT }}"
-          echo "镜像仓库路径: ${{ steps.outputs.outputs.IMAGE_REGISTRY_PATH }}" 
+          echo "镜像仓库路径: ${{ steps.outputs.outputs.IMAGE_REGISTRY_PATH }}"
+          
+      # 清理凭证文件
+      - name: 清理凭证
+        if: always() && steps.prepare_credentials.outcome == 'success'
+        run: |
+          rm -rf ${{ github.workspace }}/gcp-credentials/
+          echo "已清理 GCP 凭证文件" 
