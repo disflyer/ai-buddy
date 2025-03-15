@@ -26,12 +26,15 @@ env:
   # 固定集群配置 - 不随环境变化
   CLUSTER_NAME: "shared-app-cluster"
   CLUSTER_LOCATION: "us-central1-a"
+  # 部署配置
+  ROLLOUT_TIMEOUT: "300s"
+  APP_NAME: "app-server"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     
     # 并发控制
     concurrency:
@@ -81,6 +84,15 @@ jobs:
         # 构建镜像仓库路径
         REGISTRY_PATH="${{ env.DEFAULT_REGISTRY_PREFIX }}/${PROJECT_ID}/app"
         echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_ENV
+        
+        # 使用短 commit ID 作为镜像标签
+        SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+        echo "使用短 commit ID 作为镜像标签: ${SHORT_SHA}"
+        echo "SHORT_SHA=${SHORT_SHA}" >> $GITHUB_ENV
+        
+        # 构建完整镜像路径（带标签）
+        FULL_IMAGE="${REGISTRY_PATH}/${{ env.APP_NAME }}:${SHORT_SHA}"
+        echo "FULL_IMAGE=${FULL_IMAGE}" >> $GITHUB_ENV
     
     - name: 设置 Kubernetes 工具
       uses: yokawasa/action-setup-kube-tools@v0.9.3
@@ -99,161 +111,121 @@ jobs:
     
     - name: 准备并部署
       run: |
-        echo "准备 ${{ env.ENVIRONMENT }} 环境的部署..."
+        echo "准备部署到 ${{ env.ENVIRONMENT }} 环境..."
         
-        # 创建命名空间(如果不存在)
-        kubectl get namespace ${{ env.ENVIRONMENT }} || kubectl create namespace ${{ env.ENVIRONMENT }}
+        # 定义辅助函数
+        function log_info() {
+          echo -e "\033[0;32m[INFO]\033[0m $1"
+        }
         
-        # 准备部署配置
-        CONFIG_DIR="devops/kubernetes/overlays/${{ env.ENVIRONMENT }}"
-        BASE_DIR="devops/kubernetes/base"
-        if [ ! -f "${CONFIG_DIR}/kustomization.yaml" ]; then
-          echo "错误: 配置文件不存在 - ${CONFIG_DIR}/kustomization.yaml"
+        function log_warn() {
+          echo -e "\033[0;33m[WARN]\033[0m $1"
+        }
+        
+        function log_error() {
+          echo -e "\033[0;31m[ERROR]\033[0m $1"
+        }
+        
+        function fail() {
+          log_error "$1"
           exit 1
+        }
+        
+        function run_kustomize() {
+          kustomize build devops/kubernetes/overlays/${{ env.ENVIRONMENT }} \
+            --load-restrictor LoadRestrictionsNone \
+            --kustomize-image ${{ env.APP_NAME }}=${{ env.FULL_IMAGE }}
+        }
+        
+        # 验证集群连接
+        log_info "验证集群连接..."
+        kubectl config current-context || fail "无法获取集群上下文"
+        
+        # 检查集群节点状态
+        log_info "检查集群节点状态..."
+        kubectl get nodes || log_warn "无法获取节点信息"
+        
+        # 检查节点资源使用情况
+        if kubectl get apiservice v1beta1.metrics.k8s.io &>/dev/null; then
+          log_info "节点资源使用情况:"
+          kubectl top nodes || log_warn "无法获取节点资源使用情况"
         fi
         
-        # 创建工作目录并复制配置文件
-        WORK_DIR=$(mktemp -d)
-        mkdir -p ${WORK_DIR}/overlays/${{ env.ENVIRONMENT }}
-        mkdir -p ${WORK_DIR}/base
-        
-        # 复制整个 Kubernetes 目录结构
-        cp -r devops/kubernetes/base/* ${WORK_DIR}/base/
-        cp -r devops/kubernetes/overlays/${{ env.ENVIRONMENT }}/* ${WORK_DIR}/overlays/${{ env.ENVIRONMENT }}/
-        
-        # 显示基础目录中的文件，帮助调试
-        echo "基础目录内容:"
-        ls -la ${BASE_DIR}
-        ls -la ${WORK_DIR}/base
-
-        # 替换镜像路径
-        sed -i "s|REGISTRY_PATH|${{ env.REGISTRY_PATH }}|g" ${WORK_DIR}/overlays/${{ env.ENVIRONMENT }}/kustomization.yaml
-        
-        # 更可靠地提取部署名称 - 检查多种可能的文件
-        DEPLOYMENT_NAME=""
-        if [ -f "${WORK_DIR}/base/deployment.yaml" ]; then
-          DEPLOYMENT_NAME=$(grep -A2 "kind: Deployment" ${WORK_DIR}/base/deployment.yaml | grep "name:" | head -n1 | awk '{print $2}')
-          echo "从 deployment.yaml 提取的部署名称: ${DEPLOYMENT_NAME}"
-        elif [ -f "${WORK_DIR}/base/app.yaml" ]; then
-          DEPLOYMENT_NAME=$(grep -A2 "kind: Deployment" ${WORK_DIR}/base/app.yaml | grep "name:" | head -n1 | awk '{print $2}')
-          echo "从 app.yaml 提取的部署名称: ${DEPLOYMENT_NAME}"
+        # 准备命名空间
+        log_info "准备命名空间 ${{ env.ENVIRONMENT }}..."
+        if ! kubectl get namespace ${{ env.ENVIRONMENT }} &>/dev/null; then
+          kubectl create namespace ${{ env.ENVIRONMENT }} || fail "无法创建命名空间"
         fi
         
-        # 确保找到了部署名称
-        if [ -z "${DEPLOYMENT_NAME}" ]; then
-          echo "警告: 无法从基础配置中提取部署名称"
-          echo "检查基础目录中的 YAML 文件内容:"
-          cat ${WORK_DIR}/base/*.yaml
-          
-          # 尝试从 kustomization.yaml 中提取
-          if [ -f "${WORK_DIR}/base/kustomization.yaml" ]; then
-            RESOURCES=$(grep "resources:" -A10 ${WORK_DIR}/base/kustomization.yaml | grep -v "resources:" | grep -v "^#" | grep -v "^$" | head -n1 | tr -d ' -')
-            if [ -n "${RESOURCES}" ] && [ -f "${WORK_DIR}/base/${RESOURCES}" ]; then
-              DEPLOYMENT_NAME=$(grep -A2 "kind: Deployment" ${WORK_DIR}/base/${RESOURCES} | grep "name:" | head -n1 | awk '{print $2}')
-              echo "从 ${RESOURCES} 提取的部署名称: ${DEPLOYMENT_NAME}"
-            fi
-          fi
-          
-          # 如果仍然没有找到，使用默认值
-          if [ -z "${DEPLOYMENT_NAME}" ]; then
-            DEPLOYMENT_NAME="app"
-            echo "使用默认部署名称: ${DEPLOYMENT_NAME}"
-          fi
-        fi
+        kubectl config set-context --current --namespace=${{ env.ENVIRONMENT }}
+        log_info "当前命名空间: $(kubectl config view --minify -o jsonpath='{..namespace}')"
         
-        # 完整部署名称包含环境前缀
-        FULL_DEPLOYMENT_NAME="${{ env.ENVIRONMENT }}-${DEPLOYMENT_NAME}"
-        echo "完整部署名称: ${FULL_DEPLOYMENT_NAME}"
+        # 验证配置
+        [ -z "${{ env.DEFAULT_REGISTRY_PREFIX }}" ] && fail "DEFAULT_REGISTRY_PREFIX 未设置"
+        [ -z "${{ env.FULL_IMAGE }}" ] && fail "FULL_IMAGE 未设置"
         
-        # 添加部署注解 - 使用正确的资源名称
-        cat > ${WORK_DIR}/overlays/${{ env.ENVIRONMENT }}/deployment-patch.yaml << EOF
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: ${DEPLOYMENT_NAME}
-        spec:
-          template:
-            metadata:
-              annotations:
-                deploy.timestamp: "${{ env.DEPLOY_ID }}"
-                deploy.github.actor: "${{ github.actor }}"
-                deploy.github.sha: "${{ github.sha }}"
-        EOF
+        log_info "使用镜像: ${{ env.FULL_IMAGE }}"
         
-        # 更新 kustomization 添加补丁
-        echo "- deployment-patch.yaml" >> ${WORK_DIR}/overlays/${{ env.ENVIRONMENT }}/kustomization.yaml
+        # 记录当前部署版本（用于回滚）
+        log_info "获取当前部署版本..."
+        CURRENT_REVISION=$(kubectl get deployment ${{ env.APP_NAME }} -o jsonpath='{.metadata.generation}' 2>/dev/null || echo "0")
         
-        # 显示目录结构以便调试
-        echo "显示工作目录结构:"
-        find ${WORK_DIR} -type f | sort
+        # 预览配置
+        log_info "预览部署配置..."
+        run_kustomize | grep -E "kind:|name:|image:|annotations:" | grep -B2 -A2 "kind: Deployment" || log_warn "无法预览配置"
         
-        # 进入正确的目录执行 kustomize
-        cd ${WORK_DIR}/overlays/${{ env.ENVIRONMENT }}
-        
-        # 在正确的目录中执行验证
-        echo "执行部署前验证..."
-        kustomize build . > manifest.yaml
-        
-        # 显示生成的清单文件内容
-        echo "生成的部署资源:"
-        grep -E "kind:|name:" manifest.yaml | grep -B1 -A1 "kind: Deployment"
-        
-        kubectl apply --dry-run=client -f manifest.yaml
+        # 验证配置
+        log_info "验证部署配置..."
+        run_kustomize | kubectl apply --dry-run=client -f - || fail "部署配置验证失败"
         
         # 执行部署
-        echo "部署到 ${{ env.ENVIRONMENT }} 环境..."
-        kubectl apply -f manifest.yaml
-        
-        # 验证部署 - 使用更可靠的方法获取部署名称
-        echo "验证部署状态..."
-        ACTUAL_DEPLOYMENT=$(kubectl -n ${{ env.ENVIRONMENT }} get deployments -o name | grep "${FULL_DEPLOYMENT_NAME}" || echo "")
-        
-        if [ -z "${ACTUAL_DEPLOYMENT}" ]; then
-          echo "警告: 找不到名为 ${FULL_DEPLOYMENT_NAME} 的部署"
-          echo "列出命名空间中的所有部署:"
-          kubectl -n ${{ env.ENVIRONMENT }} get deployments
-          
-          # 尝试使用模糊匹配
-          ACTUAL_DEPLOYMENT=$(kubectl -n ${{ env.ENVIRONMENT }} get deployments -o name | grep "${{ env.ENVIRONMENT }}" | head -n1)
-          if [ -n "${ACTUAL_DEPLOYMENT}" ]; then
-            FULL_DEPLOYMENT_NAME=$(echo ${ACTUAL_DEPLOYMENT} | sed 's|deployment.apps/||')
-            echo "使用找到的部署: ${FULL_DEPLOYMENT_NAME}"
-          else
-            echo "错误: 命名空间中未找到任何部署"
-            exit 1
-          fi
-        fi
+        log_info "执行部署..."
+        run_kustomize | kubectl apply -f - || fail "部署失败"
         
         # 验证部署状态
-        kubectl -n ${{ env.ENVIRONMENT }} rollout status deployment/${FULL_DEPLOYMENT_NAME} --timeout=300s
-        
-        # 检查 Pod 状态
-        READY_PODS=$(kubectl -n ${{ env.ENVIRONMENT }} get pods -l app=${FULL_DEPLOYMENT_NAME} -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true" || echo "0")
-        TOTAL_PODS=$(kubectl -n ${{ env.ENVIRONMENT }} get pods -l app=${FULL_DEPLOYMENT_NAME} --no-headers | wc -l)
-        
-        echo "就绪 Pod 数量: ${READY_PODS}/${TOTAL_PODS}"
-        if [ "$READY_PODS" -eq 0 ]; then
-          echo "错误: 未找到就绪的 Pod"
-          kubectl -n ${{ env.ENVIRONMENT }} get pods -l app=${FULL_DEPLOYMENT_NAME}
-          kubectl -n ${{ env.ENVIRONMENT }} describe pods -l app=${FULL_DEPLOYMENT_NAME}
-          exit 1
+        log_info "验证部署状态..."
+        if ! kubectl rollout status deployment/${{ env.APP_NAME }} --timeout=${{ env.ROLLOUT_TIMEOUT }}; then
+          log_error "部署超时或失败，开始回滚..."
+          kubectl rollout undo deployment/${{ env.APP_NAME }} --to-revision=$CURRENT_REVISION
+          fail "部署失败并已回滚"
         fi
         
-        echo "部署成功完成"
+        # 检查 Pod 状态
+        log_info "检查 Pod 状态..."
+        sleep 10  # 给 Pod 一些启动时间
+        
+        READY_PODS=$(kubectl get pods -l app=${{ env.APP_NAME }} -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true" || echo "0")
+        TOTAL_PODS=$(kubectl get pods -l app=${{ env.APP_NAME }} --no-headers | wc -l)
+        
+        log_info "就绪 Pod 数量: ${READY_PODS}/${TOTAL_PODS}"
+        if [ "$READY_PODS" -eq 0 ]; then
+          log_error "未找到就绪的 Pod，开始回滚..."
+          kubectl get pods -l app=${{ env.APP_NAME }}
+          kubectl describe pods -l app=${{ env.APP_NAME }}
+          kubectl rollout undo deployment/${{ env.APP_NAME }} --to-revision=$CURRENT_REVISION
+          fail "部署失败并已回滚"
+        fi
+        
+        # 检查 Pod 日志
+        log_info "检查 Pod 日志..."
+        kubectl logs -l app=${{ env.APP_NAME }} --tail=50 || log_warn "无法获取 Pod 日志"
+        
+        log_info "部署成功完成"
     
     - name: 部署报告
       if: always()
       run: |
         echo "生成部署报告..."
-        cat << EOF > deploy-report.txt
-        部署状态: ${{ job.status }}
-        部署环境: ${{ env.ENVIRONMENT }}
-        部署ID: ${{ env.DEPLOY_ID }}
-        部署时间: $(date)
-        部署用户: ${{ github.actor }}
-        提交SHA: ${{ github.sha }}
-        镜像仓库: ${{ env.REGISTRY_PATH }}
-        集群: ${{ env.CLUSTER_NAME }}
-        EOF
         
-        cat deploy-report.txt
+        # 直接输出部署报告，无需临时文件
+        echo "==================== 部署报告 ===================="
+        echo "部署状态: ${{ job.status }}"
+        echo "部署环境: ${{ env.ENVIRONMENT }}"
+        echo "部署ID: ${{ env.DEPLOY_ID }}"
+        echo "部署时间: $(date)"
+        echo "部署用户: ${{ github.actor }}"
+        echo "提交SHA: ${{ github.sha }}"
+        echo "镜像标签: ${{ env.SHORT_SHA }}"
+        echo "镜像仓库: ${{ env.FULL_IMAGE }}"
+        echo "集群: ${{ env.CLUSTER_NAME }}"
+        echo "================================================="
