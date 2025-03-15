@@ -43,21 +43,6 @@ jobs:
         create_credentials_file: true
         cleanup_credentials: false
         
-    - name: 显示凭证文件路径
-      run: |
-        if [[ -n "${GOOGLE_APPLICATION_CREDENTIALS}" ]]; then
-          echo "GOOGLE_APPLICATION_CREDENTIALS is set to ${GOOGLE_APPLICATION_CREDENTIALS}"
-          if [[ -f "${GOOGLE_APPLICATION_CREDENTIALS}" ]]; then
-            echo "Credentials file exists"
-          else
-            echo "Credentials file does not exist"
-            exit 1
-          fi
-        else
-          echo "GOOGLE_APPLICATION_CREDENTIALS is not set"
-          exit 1
-        fi
-        
     - name: 设置环境
       id: env
       run: |
@@ -119,18 +104,3 @@ jobs:
         github.event_name == 'workflow_dispatch' && github.event.inputs.auto_approve == 'true' ||
         github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
       run: terraform apply -auto-approve
-      
-    - name: 获取输出
-      if: success() && (github.event_name == 'workflow_dispatch' && github.event.inputs.auto_approve == 'true' || github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'))
-      working-directory: ${{ env.TF_WORKING_DIR }}
-      run: |
-        echo "SERVICE_ENDPOINT=$(terraform output -raw service_endpoint)" >> $GITHUB_ENV
-        echo "REGISTRY_PATH=$(terraform output -raw image_registry_path)" >> $GITHUB_ENV
-        
-    - name: 清理凭证
-      if: always()
-      run: |
-        if [[ -n "${GOOGLE_APPLICATION_CREDENTIALS}" && -f "${GOOGLE_APPLICATION_CREDENTIALS}" ]]; then
-          echo "清理凭证文件"
-          rm -f "${GOOGLE_APPLICATION_CREDENTIALS}"
-        fi 
