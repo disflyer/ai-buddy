@@ -36,6 +36,13 @@ resource "google_compute_subnetwork" "subnet" {
   # 启用私有 Google 访问，允许节点在没有外部 IP 的情况下访问 Google API
   private_ip_google_access = true
   
+  # 启用 VPC 流日志以增强安全性和可审计性
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
+  
   lifecycle {
     prevent_destroy = true
   }
