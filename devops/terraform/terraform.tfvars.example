@@ -1,0 +1,6 @@
+# 示例配置文件 - 复制为 terraform.tfvars 并填入实际值
+project_id               = "your-project-id"
+region                   = "us-central1"
+gke_node_service_account = "your-node-sa-name"  # 只需名称部分，不含域名
+gcs_model_bucket         = "your-model-bucket"
+environments             = ["staging", "prod"] 

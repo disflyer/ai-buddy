@@ -109,4 +109,54 @@ terraform destroy
 - 确保拥有足够的配额来创建资源
 - 使用服务账号时赋予最小权限
 - 部署前检查网络和防火墙配置
-- 对于生产环境，建议启用额外的安全措施 
+- 对于生产环境，建议启用额外的安全措施
+
+## Workload Identity配置
+
+项目使用GKE Workload Identity使Kubernetes Pod能够以受控方式访问Google Cloud资源，如GCS存储桶中的模型文件。
+
+### 配置架构
+
+我们采用混合配置方式：
+
+1. **Terraform管理IAM权限**：
+   - 基于`terraform/variables.tf`中定义的变量
+   - 管理Kubernetes服务账号对GCP服务账号的模拟权限
+   - 配置GCS存储桶的访问权限
+
+2. **Kubernetes管理服务账号注释**：
+   - 基础配置位于`kubernetes/base/service-account.yaml`
+   - 环境特定配置位于`kubernetes/overlays/<环境>/service-account-patch.yaml`
+   - 通过kustomize应用到各环境
+
+### 配置方法
+
+1. **应用Terraform配置**：
+   ```bash
+   cd devops/terraform
+   terraform init
+   terraform plan    # 查看变更
+   terraform apply   # 应用变更
+   ```
+
+2. **应用Kubernetes配置**：
+   ```bash
+   # staging环境
+   kubectl apply -k devops/kubernetes/overlays/staging
+   
+   # 生产环境
+   kubectl apply -k devops/kubernetes/overlays/prod
+   ```
+
+### 验证配置
+
+```bash
+# 检查服务账号注释
+kubectl describe serviceaccount default -n staging
+
+# 验证IAM绑定
+gcloud iam service-accounts get-iam-policy shared-gke-node-sa@rare-attic-453703-a8.iam.gserviceaccount.com
+
+# 重启Pod以应用新配置
+kubectl delete pod <pod-name> -n staging
+``` 

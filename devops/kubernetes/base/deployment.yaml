@@ -33,7 +33,7 @@ spec:
           # 定义变量
           MODEL_DIR="/app/models"
           DOWNLOADED_FLAG="$MODEL_DIR/.downloaded"
-          GCS_MODEL_PATH="gs://ai-buddy-models/SenseVoiceSmall"  # 替换为实际的bucket路径
+          GCS_MODEL_PATH="gs://ai-buddy-models"  # 替换为实际的bucket路径
           
           # 创建目录
           mkdir -p $MODEL_DIR

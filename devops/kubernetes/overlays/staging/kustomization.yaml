@@ -22,6 +22,11 @@ patches:
     kind: Deployment
     name: app-server
 
+# 引用服务账号配置
+patchesStrategicMerge:
+- service-account-patch.yaml
+- deployment-resource-limits.yaml
+
 images:
 - name: app-server
   newName: REGISTRY_PATH
