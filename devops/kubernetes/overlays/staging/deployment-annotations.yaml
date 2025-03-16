@@ -9,5 +9,5 @@ spec:
         environment: "staging"
         cluster: "shared-app-cluster"
     spec:
-      serviceAccountName: default
+      serviceAccountName: staging-default
       # 这里是其他可能的配置 
