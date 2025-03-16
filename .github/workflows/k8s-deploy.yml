@@ -57,7 +57,7 @@ jobs:
         if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
           # 如果是由镜像构建工作流触发，使用当前commit ID
           IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
-        elif [[ "${{ github.event_name }}" == "push" && "${{ github.event.ref }}" == *"devops/kubernetes"* ]]; then
+        else
           # 如果是由Kubernetes配置更改触发，查询最新的镜像标签
           echo "只更新了Kubernetes配置，查询最新可用镜像..."
           
@@ -73,9 +73,6 @@ jobs:
           
           echo "找到最新镜像标签: ${LATEST_TAG}"
           IMAGE_TAG=$LATEST_TAG
-        else
-          # 其他情况使用当前commit ID
-          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
         fi
         
         REGISTRY_PATH="us-central1-docker.pkg.dev/${PROJECT_ID}/shared-app-registry/ai-buddy/${APP_NAME}:${IMAGE_TAG}"
