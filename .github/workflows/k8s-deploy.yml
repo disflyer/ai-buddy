@@ -198,7 +198,7 @@ jobs:
         $(kubectl get pods -l app=${{ env.APP_NAME }} -o wide)
         
         上线策略: 滚动更新 (RollingUpdate)
-        maxSurge: 1, maxUnavailable: 0
+        maxSurge: 1, maxUnavailable: 1
         =================================================
         EOF
         
