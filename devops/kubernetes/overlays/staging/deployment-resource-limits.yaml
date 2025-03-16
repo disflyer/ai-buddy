@@ -16,7 +16,7 @@ spec:
             memory: 4Gi
             nvidia.com/gpu: 0
       initContainers:
-      - name: model-downloader
+      - name: model-setup
         resources:
           requests:
             cpu: 200m

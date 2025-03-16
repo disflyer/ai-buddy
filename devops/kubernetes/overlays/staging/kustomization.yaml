@@ -6,6 +6,7 @@ namePrefix: staging-
 
 resources:
 - ../../base
+- pvc.yaml
 
 patches:
 - path: configmap.yaml
