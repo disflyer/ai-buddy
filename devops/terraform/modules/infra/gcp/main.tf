@@ -213,7 +213,7 @@ resource "google_container_cluster" "primary" {
     master_ipv4_cidr_block  = "172.16.0.0/28"  # 为控制平面分配一个私有IP范围
   }
 
-  # 启用主节点授权网络，限制可访问Kubernetes API的IP地址
+  # 启用主节点授权网络，明确允许 GitHub Actions IP 范围
   master_authorized_networks_config {
     cidr_blocks {
       cidr_block   = "10.0.0.0/8"
@@ -223,28 +223,21 @@ resource "google_container_cluster" "primary" {
       cidr_block   = "192.168.0.0/16"
       display_name = "VPN网络"
     }
-    # 添加GitHub Actions运行器可能使用的IP范围
+    # 添加GitHub Actions运行器可能使用的IP范围，保证它可以访问集群
     cidr_blocks {
-      cidr_block   = "0.0.0.0/0"  # 临时允许所有IP，在生产环境中应替换为特定IP
+      cidr_block   = "0.0.0.0/0"  # 临时允许所有IP，以确保CI/CD系统可以访问
       display_name = "CI/CD系统"
     }
   }
 
   # 启用IP别名以允许Pod IP地址与GCP网络集成
   ip_allocation_policy {
-    cluster_ipv4_cidr_block  = "10.100.0.0/16"
-    services_ipv4_cidr_block = "10.101.0.0/16"
+    # 使用自动分配的CIDR范围而不是指定具体范围，避免冲突
   }
 
   # 启用 Workload Identity
   workload_identity_config {
     workload_pool = "${var.project_id}.svc.id.goog"
-  }
-  
-  # 默认使用标准磁盘，减少 SSD 需求
-  node_config {
-    disk_type = "pd-standard"
-    disk_size_gb = 50
   }
   
   # 配置监控和日志服务
@@ -263,7 +256,7 @@ resource "google_container_cluster" "primary" {
       disabled = false  # 保留 HTTP 负载均衡
     }
     horizontal_pod_autoscaling {
-      disabled = true  # 禁用 Pod 自动扩缩
+      disabled = false  # 启用 Pod 自动扩缩，以支持自动伸缩功能
     }
     network_policy_config {
       disabled = false  # 启用网络策略配置

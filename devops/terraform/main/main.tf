@@ -26,11 +26,27 @@ module "infra" {
   manage_existing_resources = false
 }
 
+# 添加等待时间，确保集群 API 服务器完全就绪
+resource "time_sleep" "wait_for_kubernetes_cluster" {
+  depends_on = [module.infra]
+  
+  # 等待 3 分钟，使 API 服务器完全就绪
+  create_duration = "3m"
+}
+
 # 配置 Kubernetes 提供者
 provider "kubernetes" {
   host                   = "https://${module.infra.cluster_endpoint}"
   token                  = data.google_client_config.default.access_token
   cluster_ca_certificate = module.infra.cluster_ca_certificate
+}
+
+# 配置 Kubernetes Manifest 提供者
+provider "kubectl" {
+  host                   = "https://${module.infra.cluster_endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = module.infra.cluster_ca_certificate
+  load_config_file       = false
 }
 
 # 创建环境命名空间
@@ -44,7 +60,10 @@ resource "kubernetes_namespace" "environments" {
     }
   }
 
-  depends_on = [module.infra]
+  depends_on = [
+    module.infra,
+    time_sleep.wait_for_kubernetes_cluster
+  ]
 }
 
 # 创建资源配额
@@ -123,6 +142,21 @@ resource "kubernetes_network_policy" "isolate_staging" {
       }
     }
   }
+}
+
+# 创建 GMP 系统命名空间
+resource "kubernetes_namespace" "gmp_system" {
+  metadata {
+    name = "gmp-system"
+    labels = {
+      "app.kubernetes.io/managed-by" = "terraform"
+    }
+  }
+
+  depends_on = [
+    module.infra,
+    time_sleep.wait_for_kubernetes_cluster
+  ]
 }
 
 # 输出信息
