@@ -1,26 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app-server
+  name: websocket-server
   labels:
-    app: app-server
+    app: websocket-server
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: app-server
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
+      app: websocket-server
   template:
     metadata:
       labels:
-        app: app-server
+        app: websocket-server
       annotations:
         iam.gke.io/workload-identity-enabled: "true"
     spec:
+      serviceAccountName: staging-app-server-sa
+      nodeSelector:
+        iam.gke.io/gke-metadata-server-enabled: "true"
       initContainers:
       - name: model-setup
         image: google/cloud-sdk:slim
@@ -68,19 +66,16 @@ spec:
           else
             echo "模型已存在，跳过同步"
           fi
-        env:
-        - name: MODEL_DIR
-          value: /app/models
         volumeMounts:
         - name: models-volume
           mountPath: /app/models
         resources:
-          limits:
-            cpu: "1"
-            memory: 1Gi
           requests:
             cpu: 500m
             memory: 500Mi
+          limits:
+            cpu: 1
+            memory: 1Gi
       containers:
       - name: app-server
         image: app-server:latest

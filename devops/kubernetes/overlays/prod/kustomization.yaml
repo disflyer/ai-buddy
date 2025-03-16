@@ -6,6 +6,8 @@ namePrefix: prod-
 
 resources:
 - ../../base
+- namespace.yaml
+- pvc.yaml
 - ingress.yaml
 
 patches:
@@ -21,6 +23,7 @@ patches:
   target:
     kind: Deployment
     name: app-server
+- path: workload-identity-patch.yaml
 
 images:
 - name: app-server
