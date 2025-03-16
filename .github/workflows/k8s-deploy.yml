@@ -21,6 +21,7 @@ env:
   CLUSTER_NAME: shared-app-cluster
   CLUSTER_LOCATION: us-central1-a
   DEPLOY_TIMEOUT: "10m"
+  PROJECT_ID: rare-attic-453703-a8
 
 jobs:
   deploy:
@@ -50,7 +51,7 @@ jobs:
         echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_OUTPUT
         
         # 设置镜像信息
-        PROJECT_ID=$(echo "${{ secrets.GCP_SA_KEY }}" | base64 -d | jq -r '.project_id')
+        PROJECT_ID=${{ env.PROJECT_ID }}
         
         # 生成版本标签 - 使用提交哈希和时间戳组合
         IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)-$(date +%Y%m%d-%H%M%S)
