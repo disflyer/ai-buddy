@@ -37,9 +37,16 @@ spec:
           
           # 创建目录
           mkdir -p $MODEL_DIR
-          gcloud auth list
           # 检查是否已同步模型
           if [ ! -f "$DOWNLOADED_FLAG" ]; then
+            for i in {1..30}; do
+              echo "尝试获取认证 ($i/30)..."
+              if gcloud auth list 2>/dev/null | grep -q "service"; then
+                echo "认证获取成功！"
+                break
+              fi
+              sleep 5
+            done
             echo "从GCS同步模型: ${GCS_MODEL_PATH} 到 ${MODEL_DIR}..."
             
             # 从GCS复制模型文件
