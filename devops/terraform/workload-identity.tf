@@ -13,7 +13,7 @@ resource "google_service_account_iam_binding" "default_workload_identity_binding
   service_account_id = local.service_account_id
   role               = "roles/iam.workloadIdentityUser"
   members            = [
-    "serviceAccount:${var.project_id}.svc.id.goog[${each.value}/default]"
+    "serviceAccount:${var.project_id}.svc.id.goog[${each.value}/${each.value}-default]"
   ]
 }
 
