@@ -21,7 +21,9 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    
+    outputs:
+      image_tag: ${{ steps.tags.outputs.IMAGE_TAG }}
+      
     steps:
     - name: 检出代码
       uses: actions/checkout@v3
@@ -46,13 +48,16 @@ jobs:
       id: tags
       run: |
         if [[ -n "${{ github.event.inputs.tag }}" ]]; then
-          echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
-        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          echo "TAG=stable" >> $GITHUB_ENV
+          # 如果手动指定了标签，则使用手动标签
+          IMAGE_TAG="${{ github.event.inputs.tag }}"
         else
-          echo "TAG=latest" >> $GITHUB_ENV
+          # 使用提交ID作为标签（SHA的前7个字符）
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
         fi
-        echo "使用镜像标签: ${{ env.TAG }}"
+        
+        echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+        echo "TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+        echo "使用镜像标签: ${IMAGE_TAG}"
         
     - name: 构建并推送镜像
       uses: docker/build-push-action@v4

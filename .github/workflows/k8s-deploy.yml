@@ -53,8 +53,8 @@ jobs:
         # 设置镜像信息
         PROJECT_ID=${{ env.PROJECT_ID }}
         
-        # 生成版本标签 - 使用提交哈希和时间戳组合
-        IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)-$(date +%Y%m%d-%H%M%S)
+        # 使用提交ID作为标签（SHA的前7个字符）
+        IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
         
         REGISTRY_PATH="us-central1-docker.pkg.dev/${PROJECT_ID}/shared-app-registry/ai-buddy/${APP_NAME}:${IMAGE_TAG}"
         
