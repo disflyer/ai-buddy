@@ -20,72 +20,45 @@ spec:
         app: app-server
     spec:
       initContainers:
-      - name: model-downloader
-        image: python:3.11-slim
+      - name: model-setup
+        image: google/cloud-sdk:slim
         command:
         - bash
         - -c
         - |
-          # 安装必要的库
-          pip install huggingface_hub
-
+          set -e  # 出错时退出
+          
+          echo "准备从GCS同步模型..."
+          
           # 定义变量
           MODEL_DIR="/app/models"
-          CACHE_DIR="/app/cache"
           DOWNLOADED_FLAG="$MODEL_DIR/.downloaded"
-          MODEL_REVISION="${MODEL_REVISION:-}"
-
+          GCS_MODEL_PATH="gs://ai-buddy-models/SenseVoiceSmall"  # 替换为实际的bucket路径
+          
           # 创建目录
           mkdir -p $MODEL_DIR
-          mkdir -p $CACHE_DIR
-
-          # 检查是否已下载模型
+          
+          # 检查是否已同步模型
           if [ ! -f "$DOWNLOADED_FLAG" ]; then
-            echo "开始从 Hugging Face 下载 ${HUGGINGFACE_REPO_ID} 模型..."
+            echo "从GCS同步模型: ${GCS_MODEL_PATH} 到 ${MODEL_DIR}..."
             
-            python -c "
-          from huggingface_hub import snapshot_download
-          import os
-
-          # 准备下载参数
-          download_args = {
-              'repo_id': os.environ['HUGGINGFACE_REPO_ID'],
-              'local_dir': os.environ['MODEL_DIR'],
-              'cache_dir': os.environ['CACHE_DIR'],
-          }
-
-          # 如果指定了版本，添加 revision 参数
-          if os.environ['MODEL_REVISION']:
-              download_args['revision'] = os.environ['MODEL_REVISION']
-              print(f'使用指定版本: {os.environ[\"MODEL_REVISION\"]}')
-          else:
-              print('使用最新版本')
-
-          # 执行下载
-          snapshot_download(**download_args)
-            "
+            # 从GCS复制模型文件
+            gsutil -m cp -r $GCS_MODEL_PATH/* $MODEL_DIR/
             
-            touch $DOWNLOADED_FLAG
-            echo "模型下载完成"
+            # 检查复制状态
+            if [ $? -eq 0 ]; then
+              touch $DOWNLOADED_FLAG
+              echo "模型同步成功，已创建标记文件"
+            else
+              echo "模型同步失败"
+              exit 1
+            fi
           else
-            echo "模型已存在，跳过下载"
+            echo "模型已存在，跳过同步"
           fi
         env:
         - name: MODEL_DIR
           value: /app/models
-        - name: CACHE_DIR
-          value: /app/cache
-        - name: MODEL_REVISION
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: MODEL_REVISION
-              optional: true
-        - name: HUGGINGFACE_REPO_ID
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: HUGGINGFACE_REPO_ID
         volumeMounts:
         - name: models-volume
           mountPath: /app/models
@@ -153,5 +126,5 @@ spec:
           mountPath: /app/models
       volumes:
       - name: models-volume
-        emptyDir:
-          sizeLimit: 5Gi 
+        persistentVolumeClaim:
+          claimName: model-storage 
