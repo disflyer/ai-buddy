@@ -32,7 +32,7 @@ spec:
           set -e  # 出错时退出
           
           echo "准备从GCS同步模型..."
-          
+          gcloud auth list
           # 定义变量
           MODEL_DIR="/app/models"
           DOWNLOADED_FLAG="$MODEL_DIR/.downloaded"
