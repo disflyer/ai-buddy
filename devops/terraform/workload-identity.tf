@@ -9,10 +9,10 @@ locals {
 # 允许Kubernetes服务账号模拟GCP服务账号
 resource "google_service_account_iam_binding" "default_workload_identity_binding" {
   for_each = toset(var.environments)
-  
+
   service_account_id = local.service_account_id
   role               = "roles/iam.workloadIdentityUser"
-  members            = [
+  members = [
     "serviceAccount:${var.project_id}.svc.id.goog[${each.value}/${each.value}-default]"
   ]
 }
