@@ -21,6 +21,11 @@ resource "google_compute_network" "vpc_network" {
   
   depends_on = [null_resource.check_apis]
   
+  
+  lifecycle {
+    prevent_destroy = true
+  }
+
   lifecycle {
     prevent_destroy = true
   }
@@ -37,7 +42,7 @@ resource "google_compute_subnetwork" "subnet" {
   private_ip_google_access = true
   
   lifecycle {
-    prevent_destroy = true
+    create_before_destroy = true
   }
 }
 
@@ -82,14 +87,6 @@ resource "google_service_account" "gke_node_sa" {
   account_id   = "${var.env}-gke-node-sa"
   display_name = "GKE Node Service Account for ${var.env}"
   project      = var.project_id
-  
-  # 防止因已存在服务账号导致的错误
-  lifecycle {
-    ignore_changes = [
-      display_name,
-      description
-    ]
-  }
 }
 
 # 授予必要的权限
@@ -194,22 +191,7 @@ resource "google_container_cluster" "primary" {
 
   # 添加全面的生命周期块，防止在资源已存在时失败
   lifecycle {
-    prevent_destroy = true  # 防止误删除集群
-    ignore_changes = [
-      initial_node_count,
-      node_config,
-      master_authorized_networks_config,
-      private_cluster_config,
-      ip_allocation_policy,
-      resource_labels,
-      remove_default_node_pool,
-      workload_identity_config,
-      network_policy,
-      addons_config,
-      security_posture_config,
-      network,
-      subnetwork
-    ]
+    create_before_destroy = true
   }
 
   # 添加资源标签，便于资源管理和成本分配
@@ -315,10 +297,7 @@ resource "google_container_node_pool" "primary_nodes" {
   
   # 添加全面的生命周期管理
   lifecycle {
-    ignore_changes = [
-      node_count,
-      management,
-    ]
+    create_before_destroy = true
   }
 
   node_config {
