@@ -125,9 +125,8 @@ terraform destroy
    - 配置GCS存储桶的访问权限
 
 2. **Kubernetes管理服务账号注释**：
-   - 基础配置位于`kubernetes/base/service-account.yaml`
-   - 环境特定配置位于`kubernetes/overlays/<环境>/service-account-patch.yaml`
-   - 通过kustomize应用到各环境
+   - 环境特定配置直接位于`kubernetes/overlays/<环境>/service-account.yaml`
+   - 直接作为资源添加到kustomization.yaml中
 
 ### 配置方法
 

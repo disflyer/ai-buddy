@@ -7,6 +7,7 @@ namePrefix: staging-
 resources:
 - ../../base
 - pvc.yaml
+- service-account.yaml  # 直接添加服务账号资源
 
 patches:
 - path: configmap.yaml
@@ -21,7 +22,6 @@ patches:
   target:
     kind: Deployment
     name: app-server
-- path: service-account-patch.yaml  # 服务账号补丁
 
 images:
 - name: app-server
