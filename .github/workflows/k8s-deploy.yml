@@ -53,14 +53,38 @@ jobs:
         # 设置镜像信息
         PROJECT_ID=${{ env.PROJECT_ID }}
         
-        # 使用提交ID作为标签（SHA的前7个字符）
-        IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+        # 判断触发类型决定如何获取镜像标签
+        if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+          # 如果是由镜像构建工作流触发，使用当前commit ID
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+        elif [[ "${{ github.event_name }}" == "push" && "${{ github.event.ref }}" == *"devops/kubernetes"* ]]; then
+          # 如果是由Kubernetes配置更改触发，查询最新的镜像标签
+          echo "只更新了Kubernetes配置，查询最新可用镜像..."
+          
+          # 查询Artifact Registry获取最新镜像标签
+          LATEST_TAG=$(gcloud artifacts docker tags list \
+            us-central1-docker.pkg.dev/${PROJECT_ID}/shared-app-registry/ai-buddy/${APP_NAME} \
+            --format="value(tag)" --sort-by=~create_time --limit=1)
+            
+          if [[ -z "$LATEST_TAG" ]]; then
+            echo "错误：无法找到最新的镜像标签"
+            exit 1
+          fi
+          
+          echo "找到最新镜像标签: ${LATEST_TAG}"
+          IMAGE_TAG=$LATEST_TAG
+        else
+          # 其他情况使用当前commit ID
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+        fi
         
         REGISTRY_PATH="us-central1-docker.pkg.dev/${PROJECT_ID}/shared-app-registry/ai-buddy/${APP_NAME}:${IMAGE_TAG}"
         
         echo "PROJECT_ID=${PROJECT_ID}" >> $GITHUB_OUTPUT
         echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_OUTPUT
         echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+        
+        echo "使用镜像: ${REGISTRY_PATH}"
     
     - name: 设置 Google Cloud 认证
       uses: google-github-actions/auth@v1
@@ -186,3 +210,47 @@ jobs:
         echo "版本: ${{ steps.env.outputs.IMAGE_TAG }}" >> deployment-info.txt
         echo "部署名称: ${DEPLOYMENT_NAME}" >> deployment-info.txt
         echo "时间: $(date)" >> deployment-info.txt
+
+    - name: 清理旧镜像
+      if: success()
+      run: |
+        echo "清理旧镜像，只保留最新的5个版本..."
+        
+        # 设置变量
+        PROJECT_ID=${{ env.PROJECT_ID }}
+        APP_NAME=${{ env.APP_NAME }}
+        LOCATION=us-central1
+        REPOSITORY=shared-app-registry
+        PATH_PREFIX=ai-buddy/${APP_NAME}
+        KEEP_COUNT=5
+        
+        # 获取所有镜像标签
+        echo "获取镜像标签列表..."
+        ALL_TAGS=$(gcloud artifacts docker tags list ${LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${PATH_PREFIX} \
+          --format="value(tag)" --sort-by=~create_time --limit=999)
+        
+        # 将标签转为数组
+        readarray -t TAGS_ARRAY <<< "$ALL_TAGS"
+        TOTAL_TAGS=${#TAGS_ARRAY[@]}
+        
+        echo "找到 ${TOTAL_TAGS} 个标签版本"
+        
+        # 如果标签不足，无需清理
+        if [ $TOTAL_TAGS -le $KEEP_COUNT ]; then
+          echo "当前标签数量不超过保留数量，无需清理"
+          exit 0
+        fi
+        
+        # 显示将保留的标签
+        echo "将保留最新的 ${KEEP_COUNT} 个标签"
+        
+        # 删除旧标签
+        for ((i=KEEP_COUNT; i<TOTAL_TAGS; i++)); do
+          TAG=${TAGS_ARRAY[$i]}
+          echo "删除旧版本: ${TAG}"
+          gcloud artifacts docker images delete \
+            ${LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${PATH_PREFIX}:${TAG} \
+            --quiet
+        done
+        
+        echo "镜像清理完成"
