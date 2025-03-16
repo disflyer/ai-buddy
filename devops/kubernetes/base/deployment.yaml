@@ -37,7 +37,7 @@ spec:
           
           # 创建目录
           mkdir -p $MODEL_DIR
-          
+          gcloud auth list
           # 检查是否已同步模型
           if [ ! -f "$DOWNLOADED_FLAG" ]; then
             echo "从GCS同步模型: ${GCS_MODEL_PATH} 到 ${MODEL_DIR}..."
