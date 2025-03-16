@@ -21,14 +21,6 @@ resource "google_compute_network" "vpc_network" {
   
   depends_on = [null_resource.check_apis]
   
-  
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # 创建子网
