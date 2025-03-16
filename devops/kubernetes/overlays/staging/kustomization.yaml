@@ -21,11 +21,7 @@ patches:
   target:
     kind: Deployment
     name: app-server
-
-# 引用服务账号配置
-patchesStrategicMerge:
-- service-account-patch.yaml
-- deployment-resource-limits.yaml
+- path: service-account-patch.yaml  # 服务账号补丁
 
 images:
 - name: app-server
