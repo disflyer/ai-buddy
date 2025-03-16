@@ -40,6 +40,7 @@ spec:
           # 检查是否已同步模型
           if [ ! -f "$DOWNLOADED_FLAG" ]; then
             for i in {1..30}; do
+              gcloud auth list
               echo "尝试获取认证 ($i/30)..."
               if gcloud auth list 2>/dev/null | grep -q "service"; then
                 echo "认证获取成功！"
