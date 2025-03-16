@@ -87,7 +87,12 @@ resource "google_project_iam_member" "gke_node_sa_roles" {
     "roles/monitoring.metricWriter",    # 允许写入监控指标
     "roles/logging.logWriter",          # 允许写入日志
     "roles/storage.objectViewer",       # 允许读取存储对象
-    "roles/artifactregistry.reader"     # 允许从Artifact Registry拉取镜像
+    "roles/artifactregistry.reader",    # 允许从Artifact Registry拉取镜像
+    "roles/storage.admin",              # 添加: 完全控制存储桶
+    "roles/compute.admin",              # 添加: 完全控制计算资源
+    "roles/container.admin",            # 添加: 完全控制 GKE 资源 
+    "roles/iam.serviceAccountUser",     # 添加: 允许充当服务账号
+    "roles/artifactregistry.admin"      # 添加: 完全控制 Artifact Registry
   ])
   
   project = var.project_id
