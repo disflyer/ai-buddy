@@ -23,7 +23,7 @@ patches:
 
 images:
 - name: app-server
-  newName: REGISTRY_PATH/app-server
+  newName: REGISTRY_PATH
   newTag: latest
 
 commonAnnotations:

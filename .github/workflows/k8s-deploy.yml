@@ -50,12 +50,12 @@ jobs:
         echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_OUTPUT
         
         # 设置镜像信息
-        PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | base64 -d | jq -r '.project_id')
+        PROJECT_ID=$(echo "${{ secrets.GCP_SA_KEY }}" | base64 -d | jq -r '.project_id')
         
         # 生成版本标签 - 使用提交哈希和时间戳组合
         IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)-$(date +%Y%m%d-%H%M%S)
         
-        REGISTRY_PATH="us-central1-docker.pkg.dev/${PROJECT_ID}/app/${APP_NAME}:${IMAGE_TAG}"
+        REGISTRY_PATH="us-central1-docker.pkg.dev/${PROJECT_ID}/shared-app-registry/ai-buddy/${APP_NAME}:${IMAGE_TAG}"
         
         echo "PROJECT_ID=${PROJECT_ID}" >> $GITHUB_OUTPUT
         echo "REGISTRY_PATH=${REGISTRY_PATH}" >> $GITHUB_OUTPUT
