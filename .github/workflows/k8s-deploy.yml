@@ -37,6 +37,11 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v4
     
+    - name: 设置 Google Cloud 认证
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+    
     - name: 设置环境变量
       id: env
       run: |
@@ -82,11 +87,6 @@ jobs:
         echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
         
         echo "使用镜像: ${REGISTRY_PATH}"
-    
-    - name: 设置 Google Cloud 认证
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
     
     - name: 设置 Kubernetes 工具
       uses: yokawasa/action-setup-kube-tools@v0.9.3
