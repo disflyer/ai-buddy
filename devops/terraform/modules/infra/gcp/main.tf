@@ -318,7 +318,6 @@ resource "google_container_node_pool" "primary_nodes" {
     ignore_changes = [
       node_count,
       management,
-      node_config.0.oauth_scopes
     ]
   }
 
