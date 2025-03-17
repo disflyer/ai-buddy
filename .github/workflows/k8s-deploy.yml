@@ -121,6 +121,9 @@ jobs:
         # 确保命名空间存在
         kubectl create namespace ${{ steps.env.outputs.ENVIRONMENT }} --dry-run=client -o yaml | kubectl apply -f -
         
+        # 从 GitHub Secret 创建 Kubernetes Secret
+        echo "${{ secrets.APP_SECRETS_YAML }}" | kubectl apply -f - -n ${{ steps.env.outputs.ENVIRONMENT }}
+        
         # 切换到目标命名空间
         kubectl config set-context --current --namespace=${{ steps.env.outputs.ENVIRONMENT }}
         

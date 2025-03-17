@@ -20,6 +20,25 @@ spec:
       nodeSelector:
         iam.gke.io/gke-metadata-server-enabled: "true"
       initContainers:
+      - name: config-setup
+        image: busybox
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p /app/data
+          # 替换配置文件中的环境变量
+          envsubst < /config/.config.yaml > /app/data/.config.yaml
+          chmod 644 /app/data/.config.yaml
+          echo "配置文件已复制到 /app/data/.config.yaml"
+        volumeMounts:
+        - name: app-volume
+          mountPath: /app
+        - name: config-volume
+          mountPath: /config
+        envFrom:
+        - secretRef:
+            name: app-secrets
       - name: model-setup
         image: google/cloud-sdk:slim
         command:
@@ -132,4 +151,9 @@ spec:
       volumes:
       - name: models-volume
         persistentVolumeClaim:
-          claimName: model-storage 
+          claimName: model-storage
+      - name: app-volume
+        emptyDir: {}
+      - name: config-volume
+        configMap:
+          name: app-config-yaml

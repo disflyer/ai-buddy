@@ -30,11 +30,11 @@ log:
   # 设置日志等级：INFO、DEBUG
   log_level: INFO
   # 设置日志路径
-  log_dir: /app/tmp
+  log_dir: tmp
   # 设置日志文件
   log_file: "server.log"
   # 设置数据文件路径
-  data_dir: /app/data
+  data_dir: data
 iot:
   Speaker:
     # 设置esp32的音量，范围0-100
@@ -110,18 +110,18 @@ Memory:
 ASR:
   FunASR:
     type: fun_local
-    model_dir: /app/models/SenseVoiceSmall
-    output_dir: /app/tmp/
+    model_dir: models/SenseVoiceSmall
+    output_dir: tmp/
   DoubaoASR:
     type: doubao
     appid: 你的火山引擎语音合成服务appid
     access_token: 你的火山引擎语音合成服务access_token
     cluster: volcengine_input_common
-    output_dir: /app/tmp/
+    output_dir: tmp/
 VAD:
   SileroVAD:
     threshold: 0.5
-    model_dir: /app/models/snakers4_silero-vad
+    model_dir: models/snakers4_silero-vad
     min_silence_duration_ms: 700  # 如果说话停顿比较长，可以把这个值设置大一些
 
 LLM:
