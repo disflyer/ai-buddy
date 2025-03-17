@@ -122,7 +122,19 @@ jobs:
         kubectl create namespace ${{ steps.env.outputs.ENVIRONMENT }} --dry-run=client -o yaml | kubectl apply -f -
         
         # 从 GitHub Secret 创建 Kubernetes Secret
-        echo "${{ secrets.APP_SECRETS_YAML }}" | kubectl apply -f - -n ${{ steps.env.outputs.ENVIRONMENT }}
+        # 使用 APP_SECRETS_YAML 但确保所有值都是字符串
+        echo "${{ secrets.APP_SECRETS_YAML }}" > /tmp/app_secrets_raw.yaml
+        
+        # 使用 sed 确保所有值都是字符串格式
+        # 1. 将形如 key: 123 的格式转换为 key: "123"
+        # 2. 保留已经是字符串的值不变
+        sed -i -E 's/: ([0-9]+)$/: "\1"/' /tmp/app_secrets_raw.yaml
+        
+        # 应用修改后的 Secret
+        kubectl apply -f /tmp/app_secrets_raw.yaml -n ${{ steps.env.outputs.ENVIRONMENT }}
+        
+        # 安全删除临时文件
+        rm -f /tmp/app_secrets_raw.yaml
         
         # 切换到目标命名空间
         kubectl config set-context --current --namespace=${{ steps.env.outputs.ENVIRONMENT }}
