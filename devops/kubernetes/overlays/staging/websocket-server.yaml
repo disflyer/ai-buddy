@@ -30,7 +30,9 @@ spec:
           mkdir -p /app/data
           envsubst < /config/.config.yaml > /app/data/.config.yaml
           chmod 644 /app/data/.config.yaml
-          echo "配置文件已复制到 /app/data/.config.yaml"
+          # 打印.config.yaml文件内容
+          echo "配置文件内容:"
+          cat /app/data/.config.yaml
         resources:
           requests:
             cpu: 100m
