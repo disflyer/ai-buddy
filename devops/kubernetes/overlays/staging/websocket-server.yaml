@@ -189,4 +189,4 @@ spec:
         emptyDir: {}
       - name: config-volume
         configMap:
-          name: app-config
+          name: staging-app-config
