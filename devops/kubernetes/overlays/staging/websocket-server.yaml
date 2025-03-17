@@ -80,9 +80,7 @@ spec:
       - name: app-server
         image: app-server:latest
         securityContext:
-          runAsNonRoot: true
-          runAsUser: 1000
-          runAsGroup: 1000
+          runAsNonRoot: false
           allowPrivilegeEscalation: false
           capabilities:
             drop:
