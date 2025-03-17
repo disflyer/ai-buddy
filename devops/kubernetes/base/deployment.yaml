@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app-server
+  name: websocket-server
   labels:
-    app: app-server
+    app: websocket-server
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: app-server
+      app: websocket-server
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       labels:
-        app: app-server
+        app: websocket-server
       annotations:
         iam.gke.io/workload-identity-enabled: "true"
     spec:
@@ -82,8 +82,8 @@ spec:
             cpu: 500m
             memory: 500Mi
       containers:
-      - name: app-server
-        image: app-server:latest
+      - name: websocket-server
+        image: websocket-server:latest
         securityContext:
           runAsNonRoot: true
           runAsUser: 1000

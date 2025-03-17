@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app-server
+  name: websocket-server
 spec:
   template:
     spec:
       containers:
-      - name: app-server
+      - name: websocket-server
         resources:
           requests:
             cpu: "1"

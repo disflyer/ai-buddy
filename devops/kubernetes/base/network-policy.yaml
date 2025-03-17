@@ -1,11 +1,11 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: app-server-network-policy
+  name: websocket-server-network-policy
 spec:
   podSelector:
     matchLabels:
-      app: app-server
+      app: websocket-server
   policyTypes:
   - Ingress
   - Egress

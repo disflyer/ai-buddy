@@ -122,8 +122,8 @@ spec:
             cpu: 1
             memory: 1Gi
       containers:
-      - name: app-server
-        image: app-server:latest
+      - name: websocket-server
+        image: websocket-server:latest
         securityContext:
           runAsNonRoot: false
           allowPrivilegeEscalation: false

@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: app-config
   labels:
-    app: app-server
+    app: websocket-server
 data:
   APP_ENV: "base"
   LOG_LEVEL: "INFO"

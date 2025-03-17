@@ -16,7 +16,7 @@ env:
   REGISTRY: us-central1-docker.pkg.dev
   PROJECT_ID: rare-attic-453703-a8
   REPOSITORY: shared-app-registry
-  IMAGE_NAME: ai-buddy/app-server
+  IMAGE_NAME: ai-buddy/websocket-server
 
 jobs:
   build-and-push:
