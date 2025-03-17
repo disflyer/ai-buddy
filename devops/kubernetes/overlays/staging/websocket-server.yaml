@@ -92,6 +92,9 @@ spec:
               NEED_SYNC=true
             else
               echo "模型已是最新版本，无需同步"
+              # 打印models文件夹目录
+              echo "models文件夹目录:"
+              ls -R $MODEL_DIR
             fi
           fi
           

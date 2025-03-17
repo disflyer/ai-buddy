@@ -154,6 +154,10 @@ jobs:
         # 应用配置
         kubectl apply -k .
         
+        # 等待几秒钟，确保部署资源在API服务器中完全注册
+        echo "等待部署资源在API服务器中注册..."
+        sleep 10
+        
         # 等待部署完成
         kubectl rollout status deployment/${DEPLOYMENT_NAME} --timeout=${{ env.DEPLOY_TIMEOUT }}
     
