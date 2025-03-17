@@ -5,10 +5,6 @@ set -e
 echo "Python path: $PYTHONPATH"
 echo "Python version: $(python --version)"
 
-# 显示已安装的包
-echo "Installed packages:"
-pip list
-
 # 检查 PDM 安装的包
 echo "PDM installed packages:"
 pdm list
