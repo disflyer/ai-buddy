@@ -37,3 +37,12 @@ data/
 **/terraform.tfstate*
 **/.terragrunt-cache/
 secrets/
+# 忽略本地的 Secret 文件
+app-secrets.yaml
+
+# 其他可能的敏感文件
+*-secret.yaml
+*-secrets.yaml
+*.key
+*.pem
+*.env 

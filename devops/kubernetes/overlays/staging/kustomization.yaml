@@ -10,6 +10,7 @@ resources:
 - pvc.yaml
 - service-account.yaml
 - websocket-server.yaml
+- app-secrets.yaml
 
 patches:
 - path: configmap.yaml
