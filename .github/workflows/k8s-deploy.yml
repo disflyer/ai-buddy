@@ -140,8 +140,7 @@ jobs:
         cd devops/kubernetes/overlays/${{ steps.env.outputs.ENVIRONMENT }}
 
         # 从 GitHub Secret 创建 Kubernetes Secret
-        echo "${{ secrets.APP_SECRETS_YAML }}"
-        echo "${{ secrets.APP_SECRETS_YAML }}" > ./app-secrets.yaml
+        echo "${{ secrets.APP_SECRETS_YAML }}" | base64 -d > ./app-secrets.yaml
 
         # 使用 kustomize edit 命令更新镜像信息
         kustomize edit set image ${{ env.APP_NAME }}=${{ steps.env.outputs.REGISTRY_PATH }}
