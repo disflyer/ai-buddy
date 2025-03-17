@@ -159,7 +159,7 @@ jobs:
         sleep 10
         
         # 等待部署完成
-        kubectl rollout status deployment/${DEPLOYMENT_NAME} --timeout=${{ env.DEPLOY_TIMEOUT }}
+        kubectl rollout status deployment/${DEPLOYMENT_NAME} --timeout=${{ env.DEPLOY_TIMEOUT }} -n ${{ steps.env.outputs.ENVIRONMENT }}
     
     - name: 验证部署
       id: verify
