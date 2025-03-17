@@ -3,5 +3,4 @@ kind: Kustomization
 
 resources:
 - service.yaml
-- configmap.yaml
-- network-policy.yaml 
+# - network-policy.yaml 

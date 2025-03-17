@@ -59,7 +59,7 @@
 ## 配置文件说明
 
 - `websocket-server.yaml`: 定义 WebSocket 服务器的 Deployment
-- `app-config-yaml.yaml`: 包含应用程序的配置信息
+- `app-config.yaml`: 包含应用程序的配置信息
 - `app-secrets.yaml`: 包含敏感信息（本地开发使用，不提交到仓库）
 - `app-secrets.example.yaml`: 示例 Secret 文件，用于参考
 

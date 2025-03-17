@@ -16,21 +16,28 @@ spec:
       annotations:
         iam.gke.io/workload-identity-enabled: "true"
     spec:
-      serviceAccountName: staging-app-server-sa
+      serviceAccountName: app-server-sa
       nodeSelector:
         iam.gke.io/gke-metadata-server-enabled: "true"
       initContainers:
       - name: config-setup
-        image: busybox
+        image: nginx:alpine
         command:
         - sh
         - -c
         - |
+          echo "开始配置文件替换..."
           mkdir -p /app/data
-          # 替换配置文件中的环境变量
           envsubst < /config/.config.yaml > /app/data/.config.yaml
           chmod 644 /app/data/.config.yaml
           echo "配置文件已复制到 /app/data/.config.yaml"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 200m
+            memory: 200Mi
         volumeMounts:
         - name: app-volume
           mountPath: /app
@@ -143,9 +150,6 @@ spec:
           requests:
             cpu: 500m
             memory: 1Gi
-        envFrom:
-        - configMapRef:
-            name: app-config
         livenessProbe:
           httpGet:
             path: /health
@@ -182,4 +186,4 @@ spec:
         emptyDir: {}
       - name: config-volume
         configMap:
-          name: app-config-yaml
+          name: staging-app-config
