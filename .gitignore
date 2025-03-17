@@ -46,3 +46,4 @@ app-secrets.yaml
 *.key
 *.pem
 *.env 
+server/models
