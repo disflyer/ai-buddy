@@ -60,12 +60,36 @@ spec:
           # 然后执行模型同步
           MODEL_DIR="/app/models"
           DOWNLOADED_FLAG="$MODEL_DIR/.downloaded"
+          MODELS_HASH_FILE="$MODEL_DIR/.models_hash"
           
           # 创建目录
           mkdir -p $MODEL_DIR
           
-          # 检查是否已同步模型
+          # 获取远程模型的最新哈希值
+          echo "获取远程模型的最新状态..."
+          REMOTE_MODELS_LIST=$(gsutil ls -r gs://ai-buddy-models/ | sort)
+          REMOTE_HASH=$(echo "$REMOTE_MODELS_LIST" | md5sum | cut -d ' ' -f 1)
+          
+          # 检查是否需要同步模型
+          NEED_SYNC=false
           if [ ! -f "$DOWNLOADED_FLAG" ]; then
+            echo "首次下载模型..."
+            NEED_SYNC=true
+          elif [ ! -f "$MODELS_HASH_FILE" ]; then
+            echo "模型哈希文件不存在，需要重新同步..."
+            NEED_SYNC=true
+          else
+            LOCAL_HASH=$(cat "$MODELS_HASH_FILE")
+            if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
+              echo "检测到模型更新，本地哈希: $LOCAL_HASH, 远程哈希: $REMOTE_HASH"
+              NEED_SYNC=true
+            else
+              echo "模型已是最新版本，无需同步"
+            fi
+          fi
+          
+          # 如果需要同步，则执行同步操作
+          if [ "$NEED_SYNC" = true ]; then
             echo "从GCS同步模型到 ${MODEL_DIR}..."
             
             # 从GCS复制模型文件
@@ -76,14 +100,16 @@ spec:
             
             # 检查复制状态
             if [ $? -eq 0 ]; then
+              # 保存新的哈希值
+              echo "$REMOTE_HASH" > "$MODELS_HASH_FILE"
               touch $DOWNLOADED_FLAG
-              echo "模型同步成功，已创建标记文件"
+              echo "模型同步成功，已更新哈希值"
             else
               echo "模型同步失败"
               exit 1
             fi
           else
-            echo "模型已存在，跳过同步"
+            echo "模型已存在且是最新版本，跳过同步"
           fi
         volumeMounts:
         - name: models-volume

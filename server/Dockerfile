@@ -19,11 +19,10 @@ ENV PYTHONPATH=/app
 COPY pyproject.toml pdm.lock ./
 
 # 安装依赖
-RUN pip install ruamel.yaml && \
-    pdm install --prod --no-self
+RUN pdm install --prod --no-self
 
 # 创建模型目录
-RUN mkdir -p /app/models/SenseVoiceSmall
+RUN mkdir -p /app/models/
 
 # 复制启动脚本
 COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
