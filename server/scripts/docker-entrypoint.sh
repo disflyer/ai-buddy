@@ -9,6 +9,14 @@ echo "Python version: $(python --version)"
 echo "PDM installed packages:"
 pdm list
 
+# 输出 /app/data/.config.yaml
+echo "Config file:"
+cat /app/data/.config.yaml
+
+# 输出 models 目录
+echo "Models directory:"
+ls -la /app/models
+
 # 确保目录存在
 mkdir -p /app/data /app/tmp
 
