@@ -57,10 +57,6 @@ spec:
           set -e
           echo "测试 Workload Identity 配置..."
           
-          # 验证身份
-          echo "验证身份信息..."
-          gcloud auth list
-          
           # 尝试访问 GCS
           echo "尝试列出 GCS 存储桶内容..."
           gsutil ls gs://ai-buddy-models/
