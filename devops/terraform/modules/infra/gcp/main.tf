@@ -330,3 +330,27 @@ resource "google_container_node_pool" "primary_nodes" {
     ]
   }
 } 
+
+
+
+# 创建Cloud Router
+resource "google_compute_router" "router" {
+  name    = "${var.env}-nat-router"
+  region  = var.region
+  network = google_compute_network.vpc_network.id
+}
+
+# 配置Cloud NAT
+resource "google_compute_router_nat" "nat" {
+  name                               = "${var.env}-nat-config"
+  router                             = google_compute_router.router.name
+  region                             = var.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+  
+  # 添加日志配置便于排查问题
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
+}

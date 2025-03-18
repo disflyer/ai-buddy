@@ -10,7 +10,12 @@ spec:
   - Ingress
   - Egress
   ingress:
-  - {} # 允许所有入站流量
+  - from:
+    - ipBlock:
+        cidr: 0.0.0.0/0  # 允许来自任何IP的入站流量
+    ports:
+    - protocol: TCP
+      port: 8000  # WebSocket服务端口
   egress:
   - to:
     - ipBlock:
