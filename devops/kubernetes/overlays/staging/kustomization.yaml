@@ -5,7 +5,7 @@ namespace: staging
 namePrefix: staging-
 
 resources:
-# - ../../base
+- ../../base
 - namespace.yaml
 - pvc.yaml
 - service-account.yaml
