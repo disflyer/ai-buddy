@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: websocket-server
+  annotations:
+    # WebSocket是基于TCP的长连接，初始握手通过HTTP升级
+    service.beta.kubernetes.io/gcp-load-balancer-backend-protocol: "TCP"
+    # 支持长连接的超时时间
+    service.beta.kubernetes.io/gcp-load-balancer-timeout-sec: "3600"
+    # 启用会话亲和性，确保WebSocket连接始终路由到同一个后端
+    service.beta.kubernetes.io/gcp-load-balancer-session-affinity: "CLIENT_IP"
+    # 允许WebSocket协议升级
+    cloud.google.com/app-protocols: '{"http":"HTTPS"}'
+    # 负载均衡器健康检查配置
+    cloud.google.com/neg: '{"ingress": true}'
+spec:
+  selector:
+    app: websocket-server  # 这里匹配Pod的标签
+  ports:
+  - port: 80              # 服务端口
+    targetPort: 8000      # 容器端口
+    protocol: TCP         # WebSocket使用TCP
+    name: websocket       # 命名为websocket
+  type: LoadBalancer      # 创建云提供商的负载均衡器
+  # 保留客户端IP
+  externalTrafficPolicy: Local 

@@ -12,6 +12,7 @@ resources:
 - websocket-server.yaml
 - app-secrets.yaml
 - configmap.yaml
+- service.yaml
 
 commonAnnotations:
   # 这些注解会被添加到所有资源
