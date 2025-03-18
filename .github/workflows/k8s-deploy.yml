@@ -71,7 +71,6 @@ jobs:
             us-central1-docker.pkg.dev/${PROJECT_ID}/shared-app-registry/ai-buddy/${APP_NAME} \
             --format="value(tag)" \
             --sort-by="create_time" \
-            --order-by="desc" \
             --limit=1)
             
           if [[ -z "$LATEST_TAG" ]]; then
