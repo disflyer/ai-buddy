@@ -42,7 +42,7 @@ spec:
             memory: 200Mi
         volumeMounts:
         - name: app-volume
-          mountPath: /app
+          mountPath: /app/data
         - name: config-volume
           mountPath: /config
         envFrom:
