@@ -69,7 +69,10 @@ jobs:
           # 查询Artifact Registry获取最新镜像标签
           LATEST_TAG=$(gcloud artifacts docker tags list \
             us-central1-docker.pkg.dev/${PROJECT_ID}/shared-app-registry/ai-buddy/${APP_NAME} \
-            --format="value(tag)" --sort-by=~create_time --limit=1)
+            --format="value(tag)" \
+            --sort-by="create_time" \
+            --order-by="desc" \
+            --limit=1)
             
           if [[ -z "$LATEST_TAG" ]]; then
             echo "错误：无法找到最新的镜像标签"
