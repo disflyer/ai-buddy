@@ -80,7 +80,7 @@ data:
       # TTS将根据配置名称对应的type调用实际的TTS适配器
       TTS: DoubaoTTS
       # 记忆模块，默认不开启记忆；如果想使用超长记忆，推荐使用mem0ai；如果注重隐私，请使用本地的mem_local_short
-      Memory: mem_local_short
+      Memory: nomem
       # 意图识别模块，默认不开启。开启后，可以播放音乐、控制音量、识别退出指令
       # 意图识别使用intent_llm，优点：通用性强，缺点：增加串行前置意图识别模块，会增加处理时间
       # 意图识别使用function_call，缺点：需要所选择的LLM支持function_call，优点：按需调用工具、速度快
