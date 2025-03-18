@@ -46,11 +46,6 @@ jobs:
         chmod +x kubesec
         sudo mv kubesec /usr/local/bin/
         
-    - name: 运行 Kubesec 扫描
-      run: |
-        mkdir -p results
-        kubesec scan devops/kubernetes/base/deployment.yaml > results/kubesec-results.json
-        
     - name: 显示扫描结果
       run: |
         cat results/kubesec-results.json | jq

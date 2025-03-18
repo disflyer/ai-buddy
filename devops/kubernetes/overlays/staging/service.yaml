@@ -3,8 +3,10 @@ kind: Service
 metadata:
   name: websocket-server
   annotations:
-    # WebSocket是基于TCP的长连接，初始握手通过HTTP升级
-    service.beta.kubernetes.io/gcp-load-balancer-backend-protocol: "TCP"
+    # 关联BackendConfig
+    beta.cloud.google.com/backend-config: '{"default": "websocket-backend-config"}'
+    # WebSocket是基于TCP的长连接
+    cloud.google.com/app-protocols: '{"websocket":"HTTP"}'
     # 支持长连接的超时时间
     service.beta.kubernetes.io/gcp-load-balancer-timeout-sec: "3600"
     # 启用会话亲和性，确保WebSocket连接始终路由到同一个后端

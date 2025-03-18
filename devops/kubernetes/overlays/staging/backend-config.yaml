@@ -1,0 +1,18 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: websocket-backend-config
+spec:
+  timeoutSec: 3600  # 设置较长的超时时间，适合WebSocket连接
+  connectionDraining:
+    drainingTimeoutSec: 60
+  sessionAffinity:
+    affinityType: "CLIENT_IP"  # 启用会话亲和性
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 5
+    healthyThreshold: 2
+    unhealthyThreshold: 2
+    type: HTTP
+    requestPath: /
+    port: 8000 

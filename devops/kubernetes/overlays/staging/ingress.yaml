@@ -3,19 +3,15 @@ kind: Ingress
 metadata:
   name: websocket-server-ingress
   annotations:
-    # 启用 WebSocket 支持
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    # 允许 WebSocket 连接升级
-    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
-    nginx.ingress.kubernetes.io/proxy-buffering: "off"
-    nginx.ingress.kubernetes.io/connection-proxy-header: "upgrade"
-    # WebSocket 路径配置
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_set_header Connection "upgrade";
+    # GCP Ingress WebSocket支持配置
+    kubernetes.io/ingress.allow-http: "true"
+    # 设置超时时间，支持WebSocket长连接
+    kubernetes.io/ingress.global-static-ip-name: "websocket-server-ip"
+    # 启用后端配置，支持较长超时时间
+    cloud.google.com/backend-config: '{"default": "websocket-backend-config"}'
+    # 设置WebSocket代理配置
+    cloud.google.com/app-protocols: '{"websocket":"HTTP"}'
 spec:
-  ingressClassName: nginx
   rules:
   - http:
       paths:
