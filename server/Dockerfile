@@ -2,10 +2,14 @@ FROM python:3.11.11-slim
 
 WORKDIR /app
 
-# 安装系统依赖
+# 安装系统依赖和网络工具
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libopus-dev \
+    curl \
+    dnsutils \
+    iputils-ping \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装PDM

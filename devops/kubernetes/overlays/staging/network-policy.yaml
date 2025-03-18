@@ -10,13 +10,7 @@ spec:
   - Ingress
   - Egress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: ingress-nginx
-    ports:
-    - protocol: TCP
-      port: 8000
+  - {} # 允许所有入站流量
   egress:
   - to:
     - ipBlock:

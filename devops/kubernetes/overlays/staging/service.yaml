@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: websocket-server
   annotations:
-    # WebSocket支持
+    # WebSocket支持 - 与Ingress保持一致
     cloud.google.com/app-protocols: '{"websocket":"HTTP"}'
     # 负载均衡器健康检查配置
     cloud.google.com/neg: '{"ingress": true}'
@@ -14,5 +14,5 @@ spec:
   - port: 80
     targetPort: 8000
     protocol: TCP
-    name: websocket
+    name: websocket  # 这个名称必须与app-protocols注解中的键匹配
   type: ClusterIP 
