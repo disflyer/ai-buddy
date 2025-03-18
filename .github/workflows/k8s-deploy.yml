@@ -66,11 +66,16 @@ jobs:
           # 如果是由Kubernetes配置更改触发，查询最新的镜像标签
           echo "只更新了Kubernetes配置，查询最新可用镜像..."
           
-          # 查询Artifact Registry获取最新镜像标签
-          LATEST_TAG=$(gcloud artifacts docker images list \
+          # 先获取最新镜像的 digest
+          LATEST_DIGEST=$(gcloud artifacts docker images list \
             us-central1-docker.pkg.dev/${PROJECT_ID}/shared-app-registry/ai-buddy/${APP_NAME} \
-            --format="value(tag)" --sort-by=~CREATE_TIME --limit=1)
-            
+            --format="value(digest)" --sort-by=~CREATE_TIME --limit=1)
+
+          # 使用该 digest 查找对应的标签
+          LATEST_TAG=$(gcloud artifacts docker tags list \
+            us-central1-docker.pkg.dev/${PROJECT_ID}/shared-app-registry/ai-buddy/${APP_NAME} \
+            --filter="digest=${LATEST_DIGEST}" --format="value(tag)" --limit=1)
+
           if [[ -z "$LATEST_TAG" ]]; then
             echo "错误：无法找到最新的镜像标签"
             exit 1
