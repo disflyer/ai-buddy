@@ -183,6 +183,8 @@ spec:
         volumeMounts:
         - name: models-volume
           mountPath: /app/models
+        - name: app-volume
+          mountPath: /app/data
       volumes:
       - name: models-volume
         persistentVolumeClaim:
