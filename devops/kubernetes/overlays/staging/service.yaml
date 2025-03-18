@@ -21,6 +21,6 @@ spec:
     targetPort: 8000      # 容器端口
     protocol: TCP         # WebSocket使用TCP
     name: websocket       # 命名为websocket
-  type: LoadBalancer      # 创建云提供商的负载均衡器
+  type: ClusterIP         # 改为ClusterIP类型
   # 保留客户端IP
   externalTrafficPolicy: Local 
