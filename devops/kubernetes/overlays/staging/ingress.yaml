@@ -5,8 +5,6 @@ metadata:
   annotations:
     # GCP Ingress WebSocket支持配置
     kubernetes.io/ingress.allow-http: "true"
-    # 设置超时时间，支持WebSocket长连接
-    kubernetes.io/ingress.global-static-ip-name: "websocket-server-ip"
     # 启用后端配置，支持较长超时时间
     cloud.google.com/backend-config: '{"default": "websocket-backend-config"}'
     # 设置WebSocket代理配置

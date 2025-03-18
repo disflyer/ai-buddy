@@ -3,16 +3,14 @@ kind: Service
 metadata:
   name: websocket-server
   annotations:
-    # 关联BackendConfig
-    beta.cloud.google.com/backend-config: '{"default": "websocket-backend-config"}'
-    # WebSocket是基于TCP的长连接
+    # 关联BackendConfig - 修复格式
+    beta.cloud.google.com/backend-config: '{"ports": {"websocket":"websocket-backend-config"}}'
+    # WebSocket支持 - 移除重复注解
     cloud.google.com/app-protocols: '{"websocket":"HTTP"}'
     # 支持长连接的超时时间
     service.beta.kubernetes.io/gcp-load-balancer-timeout-sec: "3600"
     # 启用会话亲和性，确保WebSocket连接始终路由到同一个后端
     service.beta.kubernetes.io/gcp-load-balancer-session-affinity: "CLIENT_IP"
-    # 允许WebSocket协议升级
-    cloud.google.com/app-protocols: '{"http":"HTTPS"}'
     # 负载均衡器健康检查配置
     cloud.google.com/neg: '{"ingress": true}'
 spec:
