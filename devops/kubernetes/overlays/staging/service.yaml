@@ -3,8 +3,6 @@ kind: Service
 metadata:
   name: websocket-server
   annotations:
-    # 关联BackendConfig
-    beta.cloud.google.com/backend-config: '{"ports": {"websocket":"staging-websocket-backend-config"}}'
     # WebSocket支持
     cloud.google.com/app-protocols: '{"websocket":"HTTP"}'
     # 负载均衡器健康检查配置

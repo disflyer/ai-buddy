@@ -15,4 +15,4 @@ spec:
           service:
             name: websocket-server
             port:
-              name: websocket
+              number: 80
