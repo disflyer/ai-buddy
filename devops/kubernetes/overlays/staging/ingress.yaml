@@ -5,8 +5,6 @@ metadata:
   annotations:
     # 基本配置
     kubernetes.io/ingress.allow-http: "true"
-    # 简化BackendConfig引用，确保与staging前缀匹配
-    cloud.google.com/backend-config: '{"default": "staging-websocket-backend-config"}'
 spec:
   rules:
   - http:
@@ -18,10 +16,3 @@ spec:
             name: websocket-server
             port:
               name: websocket
-      - path: /xiaozhi/v1/
-        pathType: Prefix
-        backend:
-          service:
-            name: websocket-server
-            port:
-              name: websocket 
