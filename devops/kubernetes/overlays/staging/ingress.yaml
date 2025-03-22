@@ -13,6 +13,7 @@ metadata:
         "default": "websocket-backend-config"
       }
     networking.gke.io/v1beta1.FrontendConfig: "websocket-frontend-config"
+    app.kubernetes.io/environment: staging
 spec:
   rules:
   - http:

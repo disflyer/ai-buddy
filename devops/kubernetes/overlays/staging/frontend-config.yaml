@@ -8,7 +8,4 @@ spec:
     enabled: true
     responseCodeName: MOVED_PERMANENTLY_DEFAULT
   # 配置SSL策略
-  sslPolicy: gke-ingress-ssl-policy
-  # 配置连接排空时间
-  connectionDraining:
-    drainingTimeoutSec: 60 
+  sslPolicy: gke-ingress-ssl-policy 

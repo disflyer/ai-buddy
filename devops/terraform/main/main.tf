@@ -152,21 +152,6 @@ resource "kubernetes_network_policy" "isolate_staging" {
   }
 }
 
-# 创建 GMP 系统命名空间
-resource "kubernetes_namespace" "gmp_system" {
-  metadata {
-    name = "gmp-system"
-    labels = {
-      "app.kubernetes.io/managed-by" = "terraform"
-    }
-  }
-
-  depends_on = [
-    module.infra,
-    time_sleep.wait_for_kubernetes_cluster
-  ]
-}
-
 # 输出信息
 output "kubernetes_cluster_name" {
   value = module.infra.cluster_name

@@ -6,7 +6,7 @@ metadata:
     # WebSocket支持 - 与Ingress保持一致
     cloud.google.com/app-protocols: '{"websocket":"HTTP"}'
     # 后端配置，关联到我们的BackendConfig
-    cloud.google.com/backend-config: '{"default":"staging-websocket-backend-config"}'
+    cloud.google.com/backend-config: '{"default": "staging-websocket-backend-config"}'
     # 启用WebSocket支持
     cloud.google.com/neg: '{"ingress": true}'
 spec:
