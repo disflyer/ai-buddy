@@ -3,18 +3,21 @@ kind: BackendConfig
 metadata:
   name: websocket-backend-config
 spec:
-  timeoutSec: 3600  # WebSocket连接需要更长的超时时间
-  connectionDraining:
-    drainingTimeoutSec: 300
+  # 配置健康检查
   healthCheck:
-    # 显式配置健康检查
-    checkIntervalSec: 60  # 1分钟检查1次
-    timeoutSec: 10  # 超时10秒
-    healthyThreshold: 1  # 1次成功就认为健康
-    unhealthyThreshold: 5  # 5次失败才认为不健康
-    # 不使用path检查，因为WebSocket服务器没有HTTP端点
-    type: TCP  # 使用TCP检查
-    port: 8000  # 检查端口
+    type: TCP
+    port: 80
+    requestPath: /health
+    checkIntervalSec: 15
+    timeoutSec: 5
+    healthyThreshold: 2
+    unhealthyThreshold: 3
+  # 配置会话亲和性
   sessionAffinity:
-    affinityType: "GENERATED_COOKIE"
-    affinityCookieTtlSec: 3600 
+    affinityType: GENERATED_COOKIE
+    affinityDurationSeconds: 3600
+  # 配置超时时间
+  timeoutSec: 3600
+  # 配置连接排空
+  connectionDraining:
+    drainingTimeoutSec: 60 

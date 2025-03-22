@@ -1,0 +1,14 @@
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: websocket-frontend-config
+spec:
+  # 启用HTTPS重定向
+  redirectToHttps:
+    enabled: true
+    responseCodeName: MOVED_PERMANENTLY_DEFAULT
+  # 配置SSL策略
+  sslPolicy: gke-ingress-ssl-policy
+  # 配置连接排空时间
+  connectionDraining:
+    drainingTimeoutSec: 60 
