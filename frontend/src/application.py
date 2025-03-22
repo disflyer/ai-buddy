@@ -310,9 +310,25 @@ class Application:
 
     def _on_incoming_audio(self, data):
         """接收音频数据回调"""
-        if self.device_state == DeviceState.SPEAKING:
-            self.audio_codec.write_audio(data)
-            self.events[EventType.AUDIO_OUTPUT_READY_EVENT].set()
+        try:
+            if self.device_state == DeviceState.SPEAKING:
+                if AudioConfig.DEBUG_AUDIO:
+                    logger.debug(f"收到音频数据，大小: {len(data)} 字节")
+                self.audio_codec.write_audio(data)
+                # 立即尝试播放
+                if not self.audio_codec.play_audio():
+                    logger.warning("播放音频失败")
+                return True
+            elif self.device_state == DeviceState.LISTENING:
+                # 处理音频录制
+                audio_data = self.audio_codec.read_audio()
+                if audio_data:
+                    self.protocol.send_audio(audio_data)
+                return True
+        except Exception as e:
+            logger.error(f"处理音频数据时出错: {e}")
+            logger.exception("详细错误信息：")
+            return False
 
     def _on_incoming_json(self, json_data):
         """接收JSON数据回调"""
@@ -339,22 +355,102 @@ class Application:
         except Exception as e:
             logger.error(f"处理JSON消息时出错: {e}")
 
-    def _handle_tts_message(self, data):
+    def _handle_tts_message(self, message):
         """处理TTS消息"""
+        try:
+            # 检查消息类型
+            if message.get("type") != "tts":
+                logger.warning(f"非TTS消息类型: {message.get('type')}")
+                return
+
+            # 获取TTS状态和数据
+            state = message.get("state", "")
+            audio_data = message.get("data")
+            text = message.get("text", "")
+
+            if state == "start":
+                logger.info(f"开始接收TTS音频数据: {text}")
+                self.device_state = DeviceState.SPEAKING
+                # 清空之前的音频队列
+                self.audio_codec.clear_audio_queue()
+            elif state == "data":
+                if audio_data:
+                    logger.info(f"收到音频数据，大小: {len(audio_data)} 字节，文本: {text}")
+                    self.audio_codec.write_audio(audio_data)
+                    # 立即尝试播放音频
+                    if not self.audio_codec.play_audio():
+                        logger.warning("播放音频失败")
+                else:
+                    logger.warning("收到空的音频数据")
+            elif state == "end":
+                logger.info(f"TTS音频数据接收完成: {text}")
+                # 确保所有音频都被播放
+                retry_count = 0
+                max_retries = 3
+                while self.audio_codec.has_pending_audio() and retry_count < max_retries:
+                    if not self.audio_codec.play_audio():
+                        logger.warning(f"播放剩余音频失败，重试 {retry_count + 1}/{max_retries}")
+                        retry_count += 1
+                        time.sleep(0.1)  # 短暂等待后重试
+                    else:
+                        time.sleep(0.02)  # 给音频播放一些时间
+
+                # 如果还有未播放的音频，记录警告
+                if self.audio_codec.has_pending_audio():
+                    logger.warning("仍有未播放完的音频数据")
+                
+                # 等待一小段时间确保音频播放完成
+                time.sleep(0.2)
+                
+                # 如果不是被中止的，则切换状态
+                if not self.aborted:
+                    if self.keep_listening:
+                        self.device_state = DeviceState.LISTENING
+                    else:
+                        self.device_state = DeviceState.IDLE
+            else:
+                logger.warning(f"未知的TTS状态: {state}")
+        except Exception as e:
+            logger.error(f"处理TTS消息时出错: {e}")
+            logger.exception("详细错误信息：")
+            self.device_state = DeviceState.LISTENING
+
+    def _handle_tts_start(self):
+        """处理TTS开始事件"""
+        try:
+            logger.info("TTS开始播放")
+            self.device_state = "speaking"
+            self.audio_codec.clear_audio_queue()  # 清空之前的音频数据
+        except Exception as e:
+            logger.error(f"处理TTS开始事件时出错: {e}")
+            logger.exception("详细错误信息：")
+
+    def _handle_tts_stop(self):
+        """处理TTS停止事件"""
+        try:
+            logger.info("等待音频播放完成...")
+            self.audio_codec.wait_for_audio_complete()
+            
+            # 确保所有音频都已经播放完成
+            while self.audio_codec.has_pending_audio():
+                if self.audio_codec.play_audio():
+                    logger.debug("正在播放剩余音频...")
+                time.sleep(0.01)  # 短暂等待，避免CPU占用过高
+            
+            logger.info("TTS播放完成")
+            self.device_state = "idle"
+        except Exception as e:
+            logger.error(f"处理TTS停止事件时出错: {e}")
         state = data.get("state", "")
         if state == "start":
             self.schedule(lambda: self._handle_tts_start())
-        elif state == "stop":
+        elif state == "end":
             self.schedule(lambda: self._handle_tts_stop())
         elif state == "sentence_start":
             text = data.get("text", "")
             if text:
                 logger.info(f"<< {text}")
                 self.schedule(lambda: self.set_chat_message("assistant", text))
-
-                # 检查是否包含验证码信息
-                if "请登录到控制面板添加设备，输入验证码" in text:
-                    self.schedule(lambda: self._handle_verification_code(text))
 
     def _handle_tts_start(self):
         """处理TTS开始事件"""
@@ -363,26 +459,42 @@ class Application:
         # 清空可能存在的旧音频数据
         self.audio_codec.clear_audio_queue()
 
-        if self.device_state == DeviceState.IDLE or self.device_state == DeviceState.LISTENING:
+        # 确保设备状态为说话状态
+        if self.device_state != DeviceState.SPEAKING:
             self.set_device_state(DeviceState.SPEAKING)
+            logger.debug("设备状态已切换为说话状态")
 
     def _handle_tts_stop(self):
         """处理TTS停止事件"""
         if self.device_state == DeviceState.SPEAKING:
             # 给音频播放一个缓冲时间，确保所有音频都播放完毕
             def delayed_state_change():
-                # 等待音频队列清空
-                self.audio_codec.wait_for_audio_complete()
+                try:
+                    # 等待音频队列清空
+                    logger.debug("等待音频队列清空...")
+                    self.audio_codec.wait_for_audio_complete()
+                    logger.debug("音频队列已清空")
 
-                # 状态转换
-                if self.keep_listening:
-                    asyncio.run_coroutine_threadsafe(
-                        self.protocol.send_start_listening(ListeningMode.AUTO_STOP),
-                        self.loop
-                    )
-                    self.set_device_state(DeviceState.LISTENING)
-                else:
-                    self.set_device_state(DeviceState.IDLE)
+                    # 状态转换
+                    if not self.aborted:  # 只有在没有被中止的情况下才进行状态转换
+                        if self.keep_listening:
+                            # 如果是自动模式，继续监听
+                            logger.debug("自动模式：准备继续监听")
+                            asyncio.run_coroutine_threadsafe(
+                                self.protocol.send_start_listening(ListeningMode.AUTO_STOP),
+                                self.loop
+                            )
+                            self.set_device_state(DeviceState.LISTENING)
+                        else:
+                            # 如果不是自动模式，回到空闲状态
+                            logger.debug("手动模式：切换到空闲状态")
+                            self.set_device_state(DeviceState.IDLE)
+                            # 恢复唤醒词检测
+                            if self.wake_word_detector and not self.wake_word_detector.is_running():
+                                self.wake_word_detector.start()
+                except Exception as e:
+                    logger.error(f"处理TTS停止事件时出错: {e}")
+                    logger.exception("详细错误信息：")
 
             # 安排延迟执行
             threading.Thread(target=delayed_state_change, daemon=True).start()

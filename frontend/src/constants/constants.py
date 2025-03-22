@@ -24,7 +24,11 @@ class EventType:
 
 class AudioConfig:
     """音频配置"""
-    SAMPLE_RATE = 24000
-    CHANNELS = 1
-    FRAME_DURATION = 60  # ms
-    FRAME_SIZE = int(SAMPLE_RATE * (FRAME_DURATION / 1000))
+    SAMPLE_RATE = 48000  # 使用设备的原生采样率
+    CHANNELS = 1         # 保持单声道
+    FRAME_DURATION = 20  # 20ms 的帧时长
+    FRAME_SIZE = int(SAMPLE_RATE * FRAME_DURATION / 1000)  # 根据采样率计算帧大小
+    FORMAT = "opus"
+    SILENCE_THRESHOLD = 50
+    DEBUG_AUDIO = True
+    DEBUG_AUDIO_LEVEL = True
