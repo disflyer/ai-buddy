@@ -5,7 +5,6 @@ metadata:
 spec:
   # 启用HTTPS重定向
   redirectToHttps:
-    enabled: true
-    responseCodeName: MOVED_PERMANENTLY_DEFAULT
+    enabled: false
   # 配置SSL策略
   sslPolicy: gke-ingress-ssl-policy 

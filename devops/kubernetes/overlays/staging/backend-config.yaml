@@ -5,11 +5,11 @@ metadata:
 spec:
   # 配置健康检查
   healthCheck:
-    type: HTTP
-    port: 80
-    requestPath: /health
     checkIntervalSec: 15
+    port: 8000
+    requestPath: /health
     timeoutSec: 5
+    type: HTTP
     healthyThreshold: 2
     unhealthyThreshold: 3
   # 配置会话亲和性，对于 WebSocket 连接很重要

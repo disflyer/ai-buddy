@@ -6,6 +6,11 @@ metadata:
     app: websocket-server
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: websocket-server
@@ -131,7 +136,7 @@ spec:
             memory: 1Gi
       containers:
       - name: websocket-server
-        image: us-central1-docker.pkg.dev/rare-attic-453703-a8/shared-app-registry/ai-buddy/websocket-server:2ddab44
+        image: us-central1-docker.pkg.dev/rare-attic-453703-a8/shared-app-registry/ai-buddy/websocket-server:81146fe
         securityContext:
           runAsNonRoot: false
           allowPrivilegeEscalation: false
@@ -151,31 +156,31 @@ spec:
           requests:
             cpu: 500m
             memory: 1Gi
-        # livenessProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: http
-        #   initialDelaySeconds: 60
-        #   periodSeconds: 15
-        #   timeoutSeconds: 5
-        #   failureThreshold: 3
-        # readinessProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: http
-        #   initialDelaySeconds: 30
-        #   periodSeconds: 10
-        #   timeoutSeconds: 3
-        #   successThreshold: 1
-        #   failureThreshold: 3
-        # startupProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: http
-        #   initialDelaySeconds: 10
-        #   periodSeconds: 5
-        #   timeoutSeconds: 5
-        #   failureThreshold: 12
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 30
         volumeMounts:
         - name: models-volume
           mountPath: /app/models

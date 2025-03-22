@@ -250,16 +250,16 @@ resource "google_container_cluster" "primary" {
     provider = "CALICO"  # 使用Calico作为网络策略提供者
   }
   
-  # 精简 GKE 集群控制平面
+  # 启用 HTTP 负载均衡
   addons_config {
     http_load_balancing {
-      disabled = false  # 保留 HTTP 负载均衡
+      disabled = false
     }
     horizontal_pod_autoscaling {
       disabled = false  # 启用 Pod 自动扩缩，以支持自动伸缩功能
     }
     network_policy_config {
-      disabled = false  # 启用网络策略配置
+      disabled = false
     }
   }
 }

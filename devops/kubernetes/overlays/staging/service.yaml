@@ -10,11 +10,11 @@ metadata:
     # 启用WebSocket支持
     cloud.google.com/neg: '{"ingress": true}'
 spec:
-  selector:
-    app: websocket-server
+  type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 8000
-    protocol: TCP
-    name: websocket  # 这个名称必须与app-protocols注解中的键匹配
-  type: ClusterIP 
+    - name: websocket
+      port: 80
+      protocol: TCP
+      targetPort: 8000
+  selector:
+    app: websocket-server 
