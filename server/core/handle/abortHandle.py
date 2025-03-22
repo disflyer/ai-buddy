@@ -10,7 +10,10 @@ async def handleAbortMessage(conn):
     logger.bind(tag=TAG).info("Abort message received")
     # 设置成打断状态，会自动打断llm、tts任务
     conn.client_abort = True
-    # 打断客户端说话状态
-    await conn.websocket.send(json.dumps({"type": "tts", "state": "stop", "session_id": conn.session_id}))
+    logger.bind(tag="").debug(f"中断任务，清除队列中的tts")
+    with conn.tts_queue.mutex:
+        conn.tts_queue.queue.clear()
+    conn.audio_play_queue.queue.clear()
     conn.clearSpeakStatus()
+    await conn.websocket.send_text(json.dumps({"type": "tts", "state": "stop", "session_id": conn.session_id}))
     logger.bind(tag=TAG).info("Abort message received-end")

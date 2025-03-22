@@ -15,7 +15,7 @@ async def handleTextMessage(conn, message):
     try:
         msg_json = json.loads(message)
         if isinstance(msg_json, int):
-            await conn.websocket.send(message)
+            await conn.websocket.send_text(message)
             return
         if msg_json["type"] == "hello":
             await handleHelloMessage(conn)
@@ -43,4 +43,4 @@ async def handleTextMessage(conn, message):
             if "states" in msg_json:
                 await handleIotStatus(conn, msg_json["states"])  
     except json.JSONDecodeError:
-        await conn.websocket.send(message)
+        await conn.websocket.send_text(message)

@@ -4,9 +4,11 @@ import wave
 import os
 from typing import Optional, Tuple, List
 import uuid
-import websockets
 import json
 import gzip
+import httpx
+import asyncio
+from starlette.websockets import WebSocketDisconnect, WebSocket
 
 import opuslib_next
 from core.providers.asr.base import ASRProviderBase
@@ -161,53 +163,71 @@ class ASRProvider(ASRProviderBase):
     async def _send_request(self, audio_data: List[bytes], segment_size: int) -> Optional[str]:
         """Send request to Volcano ASR service."""
         try:
-            auth_header = {'Authorization': 'Bearer; {}'.format(self.access_token)}
-            async with websockets.connect(self.ws_url, additional_headers=auth_header) as websocket:
-                # Prepare request data
-                request_params = self._construct_request(str(uuid.uuid4()))
-                print(request_params)
-                payload_bytes = str.encode(json.dumps(request_params))
-                payload_bytes = gzip.compress(payload_bytes)
-                full_client_request = self._generate_header()
-                full_client_request.extend((len(payload_bytes)).to_bytes(4, 'big'))  # payload size(4 bytes)
-                full_client_request.extend(payload_bytes)  # payload
-
-                # Send header and metadata
-                # full_client_request
-                await websocket.send(full_client_request)
-                res = await websocket.recv()
-                result = parse_response(res)
-                if 'payload_msg' in result and result['payload_msg']['code'] != self.success_code:
-                    logger.bind(tag=TAG).error(f"ASR error: {result}")
+            # 由于我们需要连接到外部的WebSocket服务，而不是创建自己的服务器，
+            # 这里我们仍然需要使用httpx或类似的客户端库来创建到外部服务的连接
+            # 这里我们实现一个简单的与外部服务通信的客户端
+            client = httpx.AsyncClient()
+            async with client.stream('GET', self.ws_url, headers={
+                'Authorization': f'Bearer; {self.access_token}',
+                'Connection': 'Upgrade',
+                'Upgrade': 'websocket',
+                'Sec-WebSocket-Version': '13',
+                'Sec-WebSocket-Key': uuid.uuid4().hex
+            }) as response:
+                # 连接到外部WebSocket服务
+                if response.status_code != 101:  # 101 Switching Protocols
+                    logger.bind(tag=TAG).error(f"Failed to connect to WebSocket: {response.status_code}")
                     return None
+                
+                # 使用httpx的WebSocket客户端功能
+                async with response.aiter_bytes() as ws:
+                    # 准备请求数据
+                    request_params = self._construct_request(str(uuid.uuid4()))
+                    payload_bytes = str.encode(json.dumps(request_params))
+                    payload_bytes = gzip.compress(payload_bytes)
+                    full_client_request = self._generate_header()
+                    full_client_request.extend((len(payload_bytes)).to_bytes(4, 'big'))  # payload size(4 bytes)
+                    full_client_request.extend(payload_bytes)  # payload
 
-                for seq, (chunk, last) in enumerate(self.slice_data(audio_data, segment_size), 1):
-                    if last:
-                        audio_only_request = self._generate_header(
-                            message_type=CLIENT_AUDIO_ONLY_REQUEST,
-                            message_type_specific_flags=NEG_SEQUENCE
-                        )
+                    # 发送头部和元数据
+                    await ws.write(full_client_request)
+                    
+                    # 接收服务器响应
+                    res = await ws.read()
+                    result = parse_response(res)
+                    if 'payload_msg' in result and result['payload_msg']['code'] != self.success_code:
+                        logger.bind(tag=TAG).error(f"ASR error: {result}")
+                        return None
+
+                    # 发送音频数据
+                    for seq, (chunk, last) in enumerate(self.slice_data(audio_data, segment_size), 1):
+                        if last:
+                            audio_only_request = self._generate_header(
+                                message_type=CLIENT_AUDIO_ONLY_REQUEST,
+                                message_type_specific_flags=NEG_SEQUENCE
+                            )
+                        else:
+                            audio_only_request = self._generate_header(
+                                message_type=CLIENT_AUDIO_ONLY_REQUEST
+                            )
+                        payload_bytes = gzip.compress(chunk)
+                        audio_only_request.extend((len(payload_bytes)).to_bytes(4, 'big'))  # payload size(4 bytes)
+                        audio_only_request.extend(payload_bytes)  # payload
+                        
+                        # 发送音频数据
+                        await ws.write(audio_only_request)
+
+                    # 接收响应
+                    response = await ws.read()
+                    result = parse_response(response)
+
+                    if 'payload_msg' in result and result['payload_msg']['code'] == self.success_code:
+                        if len(result['payload_msg']['result']) > 0:
+                            return result['payload_msg']['result'][0]["text"]
+                        return None
                     else:
-                        audio_only_request = self._generate_header(
-                            message_type=CLIENT_AUDIO_ONLY_REQUEST
-                        )
-                    payload_bytes = gzip.compress(chunk)
-                    audio_only_request.extend((len(payload_bytes)).to_bytes(4, 'big'))  # payload size(4 bytes)
-                    audio_only_request.extend(payload_bytes)  # payload
-                    # Send audio data
-                    await websocket.send(audio_only_request)
-
-                # Receive response
-                response = await websocket.recv()
-                result = parse_response(response)
-
-                if 'payload_msg' in result and result['payload_msg']['code'] == self.success_code:
-                    if len(result['payload_msg']['result']) > 0:
-                        return result['payload_msg']['result'][0]["text"]
-                    return None
-                else:
-                    logger.bind(tag=TAG).error(f"ASR error: {result}")
-                    return None
+                        logger.bind(tag=TAG).error(f"ASR error: {result}")
+                        return None
 
         except Exception as e:
             logger.bind(tag=TAG).error(f"ASR request failed: {e}", exc_info=True)
@@ -215,7 +235,6 @@ class ASRProvider(ASRProviderBase):
 
     @staticmethod
     def decode_opus(opus_data: List[bytes], session_id: str) -> List[bytes]:
-
         decoder = opuslib_next.Decoder(16000, 1)  # 16kHz, 单声道
         pcm_data = []
 

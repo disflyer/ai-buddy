@@ -38,6 +38,7 @@ class ConnectionHandler:
         self.session_id = None
         self.prompt = None
         self.welcome_msg = None
+        self.is_closed = False  # 添加一个标志来跟踪连接是否已关闭
 
         # 客户端状态相关
         self.client_abort = False
@@ -97,28 +98,28 @@ class ConnectionHandler:
 
     async def handle_connection(self, ws):
         try:
-            # 获取 URL 查询参数
-            query_string = ws.request.query_string.decode('utf-8') if ws.request.query_string else None
-            params = {}
-            if query_string:
-                from urllib.parse import parse_qs
-                params = parse_qs(query_string)
-
-            # 获取并预处理 headers
-            self.headers = dict(ws.request.headers)
+            # 初始化headers
+            self.headers = {}
             
-            # 如果 headers 中没有必要的认证信息，从 URL 参数中获取并添加到 headers
-            if not self.headers.get("device-id") and params.get("device-id"):
-                self.headers["device-id"] = params["device-id"][0]
+            # 1. 从 FastAPI WebSocket 获取认证信息
+            self.headers = dict(ws.headers)
             
-            if not self.headers.get("authorization") and params.get("token"):
-                self.headers["authorization"] = f"Bearer {params['token'][0]}"
+            # 2. 尝试从URL查询参数获取认证信息
+            try:
+                query_string = ws.query_params
+                if not self.headers.get("device-id") and query_string.get("device-id"):
+                    self.headers["device-id"] = query_string["device-id"]
+                
+                if not self.headers.get("authorization") and query_string.get("token"):
+                    self.headers["authorization"] = f"Bearer {query_string['token']}"
+            except Exception as e:
+                self.logger.bind(tag=TAG).warning(f"解析URL参数失败: {str(e)}")
 
             # 获取客户端ip地址
-            client_ip = ws.remote_address[0]
-            self.logger.bind(tag=TAG).info(f"{client_ip} conn - Headers: {self.headers}, Query: {query_string}")
+            client_ip = ws.client.host if hasattr(ws, 'client') else 'unknown'
+            self.logger.bind(tag=TAG).info(f"{client_ip} conn - Headers: {self.headers}")
 
-            # 进行认证
+            # 3. 进行认证
             await self.auth.authenticate(self.headers)
 
             device_id = self.headers.get("device-id")
@@ -156,9 +157,16 @@ class ConnectionHandler:
             self.websocket = ws
             self.session_id = str(uuid.uuid4())
 
-            self.welcome_msg = self.config["xiaozhi"]
-            self.welcome_msg["session_id"] = self.session_id
-            await self.websocket.send(json.dumps(self.welcome_msg))
+            # 构造欢迎消息
+            welcome_msg = {
+                "type": "hello",
+                "version": self.config["xiaozhi"]["version"],
+                "transport": self.config["xiaozhi"]["transport"],
+                "audio_params": self.config["xiaozhi"]["audio_params"],
+                "session_id": self.session_id
+            }
+            # 使用 Starlette WebSocket 的正确发送方式
+            await self.websocket.send_text(json.dumps(welcome_msg))
 
             await self.loop.run_in_executor(None, self._initialize_components)
 
@@ -170,24 +178,47 @@ class ConnectionHandler:
             audio_play_priority = threading.Thread(target=self._audio_play_priority_thread, daemon=True)
             audio_play_priority.start()
 
+            # 消息处理循环
             try:
-                async for message in self.websocket:
-                    await self._route_message(message)
-            except websockets.exceptions.ConnectionClosed:
-                self.logger.bind(tag=TAG).info("客户端断开连接")
+                while True:
+                    try:
+                        # 设置接收超时
+                        message = await asyncio.wait_for(ws.receive(), timeout=30)
+                        
+                        if message["type"] == "websocket.disconnect":
+                            break
+                            
+                        if message["type"] == "websocket.receive":
+                            data = message.get("text") or message.get("bytes")
+                            if data:
+                                await self._route_message(data)
+                    except asyncio.TimeoutError:
+                        # 发送 ping 消息
+                        await ws.send_json({"type": "ping"})
+                        continue
+                    except Exception as e:
+                        self.logger.bind(tag=TAG).error(f"消息处理错误: {str(e)}")
+                        break
+                        
+            except Exception as e:
+                self.logger.bind(tag=TAG).error(f"WebSocket 连接错误: {str(e)}")
+            finally:
                 await self.close()
 
         except AuthenticationError as e:
             self.logger.bind(tag=TAG).error(f"Authentication failed: {str(e)}")
             await ws.close()
-            return
         except Exception as e:
             stack_trace = traceback.format_exc()
             self.logger.bind(tag=TAG).error(f"Connection error: {str(e)}-{stack_trace}")
             await ws.close()
-            return
         finally:
+            # 确保资源被正确清理
             await self.memory.save_memory(self.dialogue.dialogue)
+            if not self.stop_event.is_set():
+                self.stop_event.set()
+            if not self.executor._shutdown:
+                self.executor.shutdown(wait=False)
 
     async def _route_message(self, message):
         """消息路由"""
@@ -490,7 +521,7 @@ class ConnectionHandler:
                 self.logger.bind(tag=TAG).error(f"TTS任务处理错误: {e}")
                 self.clearSpeakStatus()
                 asyncio.run_coroutine_threadsafe(
-                    self.websocket.send(json.dumps({"type": "tts", "state": "stop", "session_id": self.session_id})),
+                    self.websocket.send_text(json.dumps({"type": "tts", "state": "stop", "session_id": self.session_id})),
                     self.loop
                 )
                 self.logger.bind(tag=TAG).error(f"tts_priority priority_thread: {text} {e}")
@@ -531,12 +562,22 @@ class ConnectionHandler:
 
     async def close(self):
         """资源清理方法"""
+        # 避免重复关闭
+        if self.is_closed:
+            return
 
+        # 设置关闭标志
+        self.is_closed = True
+            
         # 清理其他资源
         self.stop_event.set()
         self.executor.shutdown(wait=False)
         if self.websocket:
-            await self.websocket.close()
+            try:
+                await self.websocket.close()
+            except RuntimeError as e:
+                # 如果已经关闭，忽略错误
+                self.logger.bind(tag=TAG).debug(f"WebSocket可能已关闭: {str(e)}")
         self.logger.bind(tag=TAG).info("连接资源已释放")
 
     def reset_vad_states(self):

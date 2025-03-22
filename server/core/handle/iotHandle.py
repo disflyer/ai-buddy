@@ -1,4 +1,5 @@
 import json
+import uuid
 from config.logger import setup_logging
 
 TAG = __name__
@@ -82,61 +83,119 @@ class IotDescriptor:
 
 
 async def handleIotDescriptors(conn, descriptors):
-    """
-    处理物联网描述
-    示例: [{
-        "name":"Speaker",
-        "description":"当前 AI 机器人的扬声器",
-        "properties":{
-            "volume":{"description":"当前音量 值","type":"number"}  可以有boolean, number, string三种类型
-        },
-        "methods":{
-            "SetVolume":{
-                "description":"设置音量","parameters":{"volume":{"description":"0到100之间的整数","type":"number"}}
-            }
-        }
-    }]
-    descriptors: 描述列表
-    """
-    for descriptor in descriptors:
-        iot_descriptor = IotDescriptor(descriptor["name"], descriptor["description"], descriptor["properties"],
-                                       descriptor["methods"])
-        conn.iot_descriptors[descriptor["name"]] = iot_descriptor
+    """处理IOT设备描述信息"""
+    try:
+        # 记录设备描述
+        conn.iot_descriptors = descriptors
 
-    # 暂时从配置文件中设置音量，后期通过意图识别控制音量
-    default_iot_volume = 100
-    if "iot" in conn.config:
-        default_iot_volume = conn.config["iot"]["Speaker"]["volume"]
-    logger.bind(tag=TAG).info(f"服务端设置音量为{default_iot_volume}")
-    await send_iot_conn(conn, "Speaker", "SetVolume", {"volume": default_iot_volume})
-async def handleIotStatus(conn, states):
-    """
-    处理物联网状态
-    示例: [{
-        "name":"Speaker",
-        "state":{
-            "volume":100
+        # 生成设备描述的提示语
+        devices = []
+        all_traits = []
+        for descriptor in descriptors.values():
+            device_type = descriptor.get("type", "未知设备类型")
+            device_name = descriptor.get("name", "未知设备名称")
+            device_id = descriptor.get("id", str(uuid.uuid4()))
+            
+            traits = descriptor.get("traits", [])
+            trait_names = []
+            for trait in traits:
+                trait_type = trait.get("type", "unknown")
+                trait_name = trait.get("name", "未知特性")
+                trait_names.append(f"{trait_name}({trait_type})")
+                
+                # 收集所有特性以便生成全局指令
+                all_traits.append({
+                    "device_name": device_name,
+                    "device_id": device_id,
+                    "trait_type": trait_type,
+                    "trait_name": trait_name
+                })
+            
+            trait_desc = "、".join(trait_names) if trait_names else "无特性"
+            devices.append(f"{device_name}({device_type})，特性：{trait_desc}")
+
+        # 生成总结提示
+        prompt = f"我检测到以下智能设备:\n" + "\n".join(devices)
+        
+        # 添加全局指令
+        if all_traits:
+            global_commands = generate_global_commands(all_traits)
+            if global_commands:
+                prompt += "\n\n你可以通过以下指令控制这些设备:\n" + "\n".join(global_commands)
+        
+        conn.logger.bind(tag=TAG).info(f"IOT设备描述: {prompt}")
+        
+        # 回复确认信息
+        response = {
+            "type": "iot_ack",
+            "message": "设备描述已接收",
+            "session_id": conn.session_id
         }
-    }]
-    states: 状态列表
-    """
-    for state in states:
-        for key, value in conn.iot_descriptors.items():
-            if key == state["name"]:
-                for property_item in value.properties:
-                    # properties为字典列表, 记录各种属性
-                    for k, v in state["state"].items():
-                        # state为字典, 记录各种属性的值, 是需要记录的信息
-                        if property_item["name"] == k:
-                            # 检查一下属性是不是相同的
-                            if type(v) != type(property_item["value"]):
-                                logger.bind(tag=TAG).error(f"属性{property_item['name']}的值类型不匹配")
-                                break
-                            else:
-                                property_item["value"] = v
-                                logger.bind(tag=TAG).info(f"物联网状态更新: {key} , {property_item['name']} = {v}")
-                            break
-                break
+        await conn.websocket.send_text(json.dumps(response))
+        
+    except Exception as e:
+        conn.logger.bind(tag=TAG).error(f"处理IOT设备描述出错: {str(e)}")
+        error_response = {
+            "type": "error",
+            "message": f"处理设备描述失败: {str(e)}",
+            "session_id": conn.session_id
+        }
+        await conn.websocket.send_text(json.dumps(error_response))
+
+
+async def handleIotStatus(conn, status):
+    """处理IOT设备状态更新"""
+    try:
+        # 根据您的需要处理状态信息
+        conn.logger.bind(tag=TAG).info(f"接收到IOT状态更新: {status}")
+        
+        # 回复确认信息
+        response = {
+            "type": "iot_status_ack",
+            "message": "设备状态已更新",
+            "session_id": conn.session_id
+        }
+        await conn.websocket.send_text(json.dumps(response))
+        
+    except Exception as e:
+        conn.logger.bind(tag=TAG).error(f"处理IOT状态更新出错: {str(e)}")
+        error_response = {
+            "type": "error",
+            "message": f"处理设备状态更新失败: {str(e)}",
+            "session_id": conn.session_id
+        }
+        await conn.websocket.send_text(json.dumps(error_response))
+
+
+def generate_global_commands(traits):
+    """根据设备特性生成通用指令"""
+    commands = set()
+    
+    # 为不同类型的特性生成指令
+    for trait in traits:
+        device_name = trait["device_name"]
+        trait_type = trait["trait_type"]
+        
+        if trait_type == "onoff":
+            commands.add(f"打开{device_name}")
+            commands.add(f"关闭{device_name}")
+        
+        elif trait_type == "brightness":
+            commands.add(f"调高{device_name}亮度")
+            commands.add(f"调低{device_name}亮度")
+            commands.add(f"把{device_name}调到50%亮度")
+        
+        elif trait_type == "colorsetting":
+            commands.add(f"把{device_name}调成红色")
+            commands.add(f"把{device_name}调成蓝色")
+            commands.add(f"把{device_name}调成暖色")
+        
+        elif trait_type == "temperaturesetting":
+            commands.add(f"把{device_name}温度调高")
+            commands.add(f"把{device_name}温度调低")
+            commands.add(f"把{device_name}温度设置为26度")
+    
+    return sorted(list(commands))
 
 async def get_iot_status(conn, name, property_name):
     """
@@ -179,7 +238,7 @@ async def send_iot_conn(conn, name, method_name, parameters):
             for method in value.methods:
                 # 找到了方法
                 if method["name"] == method_name:
-                    await conn.websocket.send(json.dumps({
+                    await conn.websocket.send_text(json.dumps({
                         "type": "iot",
                         "commands": [
                             {
