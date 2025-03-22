@@ -7,12 +7,14 @@ spec:
   connectionDraining:
     drainingTimeoutSec: 300
   healthCheck:
-    checkIntervalSec: 15
-    timeoutSec: 5
-    healthyThreshold: 2
-    unhealthyThreshold: 2
-    type: TCP  # 改为TCP检查，不需要特定HTTP路径
-    port: 8000
+    # 显式配置健康检查
+    checkIntervalSec: 60  # 1分钟检查1次
+    timeoutSec: 10  # 超时10秒
+    healthyThreshold: 1  # 1次成功就认为健康
+    unhealthyThreshold: 5  # 5次失败才认为不健康
+    # 不使用path检查，因为WebSocket服务器没有HTTP端点
+    type: TCP  # 使用TCP检查
+    port: 8000  # 检查端口
   sessionAffinity:
     affinityType: "GENERATED_COOKIE"
     affinityCookieTtlSec: 3600 

@@ -7,7 +7,7 @@ metadata:
     kubernetes.io/ingress.allow-http: "true"
     networking.gke.io/backend-config: |
       {
-        "default": "websocket-backend-config"
+        "default": "staging-websocket-backend-config"
       }
 spec:
   rules:
