@@ -30,31 +30,22 @@ module "infra" {
 resource "time_sleep" "wait_for_kubernetes_cluster" {
   depends_on = [module.infra]
   
-  # 等待 3 分钟，使 API 服务器完全就绪
-  create_duration = "3m"
+  # 增加等待时间到 5 分钟，确保 API 服务器完全就绪
+  create_duration = "5m"
 }
 
 # 配置 Kubernetes 提供者
 provider "kubernetes" {
   host                   = "https://${module.infra.cluster_endpoint}"
   token                  = data.google_client_config.default.access_token
-  cluster_ca_certificate = module.infra.cluster_ca_certificate
-  
-  # 添加 TLS 配置
-  client_certificate     = module.infra.client_certificate
-  client_key            = module.infra.client_key
+  cluster_ca_certificate = base64decode(module.infra.cluster_ca_certificate)
 }
 
 # 配置 Kubernetes Manifest 提供者
 provider "kubectl" {
   host                   = "https://${module.infra.cluster_endpoint}"
   token                  = data.google_client_config.default.access_token
-  cluster_ca_certificate = module.infra.cluster_ca_certificate
-  load_config_file       = false
-  
-  # 添加 TLS 配置
-  client_certificate     = module.infra.client_certificate
-  client_key            = module.infra.client_key
+  cluster_ca_certificate = base64decode(module.infra.cluster_ca_certificate)
 }
 
 # 创建环境命名空间

@@ -164,7 +164,7 @@ resource "google_artifact_registry_repository_iam_member" "registry_access" {
 # tfsec:ignore:google-gke-enforce-pod-security-policy
 # tfsec:ignore:google-gke-no-public-control-plane
 resource "google_container_cluster" "primary" {
-  name     = "${var.env}-${var.cluster_name}"  # 注意：这可能导致名称重复为 "shared-app-cluster"
+  name     = "${var.env}-${var.cluster_name}"
   location = "${var.region}-a"  # 使用单区域部署而非整个区域
   
   # 使用我们创建的 VPC 网络和子网
@@ -173,7 +173,7 @@ resource "google_container_cluster" "primary" {
   
   # 删除默认节点池，使用单独管理的节点池
   remove_default_node_pool = true
-  initial_node_count       = 1
+  initial_node_count       = 0  # 设置为0，避免创建默认节点池
   
   # 允许删除集群
   deletion_protection = false

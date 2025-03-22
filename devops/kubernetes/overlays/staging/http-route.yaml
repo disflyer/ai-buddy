@@ -1,0 +1,31 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: websocket-route
+  annotations:
+    app.kubernetes.io/environment: staging
+spec:
+  parentRefs:
+  - name: staging-websocket-gateway
+    namespace: staging
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ws
+    backendRefs:
+    - name: staging-websocket-server
+      port: 80
+      filters:
+      - type: RequestHeaderModifier
+        requestHeaderModifier:
+          add:
+          - name: "X-Forwarded-Proto"
+            value: "ws"
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: staging-websocket-server
+      port: 80 

@@ -3,8 +3,8 @@
   "DEVICE_ID": "4e:5d:48:92:5f:0a",
   "NETWORK": {
     "OTA_VERSION_URL": "https://api.tenclass.net/xiaozhi/ota/",
-    "WEBSOCKET_URL": "ws://34.160.61.129/xiaozhi/v1/",
-    "WEBSOCKET_ACCESS_TOKEN": "test-token"
+    "WEBSOCKET_URL": "ws://35.227.255.106/ws",
+    "WEBSOCKET_ACCESS_TOKEN": "8a42a33f01a742d9992fc662203efc71"
   },
   "MQTT_INFO": {
     "endpoint": "post-cn-apg3xckag01.mqtt.aliyuncs.com",

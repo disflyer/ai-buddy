@@ -147,7 +147,8 @@ spec:
             type: RuntimeDefault
         ports:
         - containerPort: 8000
-          name: http
+          name: websocket
+          protocol: TCP
         resources:
           limits:
             cpu: "4"
@@ -159,7 +160,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /health
-            port: http
+            port: websocket
           initialDelaySeconds: 120
           periodSeconds: 30
           timeoutSeconds: 10
@@ -167,7 +168,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /health
-            port: http
+            port: websocket
           initialDelaySeconds: 60
           periodSeconds: 20
           timeoutSeconds: 5
@@ -176,7 +177,7 @@ spec:
         startupProbe:
           httpGet:
             path: /health
-            port: http
+            port: websocket
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 10
