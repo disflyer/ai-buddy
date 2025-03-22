@@ -39,6 +39,10 @@ provider "kubernetes" {
   host                   = "https://${module.infra.cluster_endpoint}"
   token                  = data.google_client_config.default.access_token
   cluster_ca_certificate = module.infra.cluster_ca_certificate
+  
+  # 添加 TLS 配置
+  client_certificate     = module.infra.client_certificate
+  client_key            = module.infra.client_key
 }
 
 # 配置 Kubernetes Manifest 提供者
@@ -47,6 +51,10 @@ provider "kubectl" {
   token                  = data.google_client_config.default.access_token
   cluster_ca_certificate = module.infra.cluster_ca_certificate
   load_config_file       = false
+  
+  # 添加 TLS 配置
+  client_certificate     = module.infra.client_certificate
+  client_key            = module.infra.client_key
 }
 
 # 创建环境命名空间

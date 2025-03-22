@@ -15,6 +15,18 @@ output "cluster_ca_certificate" {
   sensitive   = true
 }
 
+output "client_certificate" {
+  description = "GKE 客户端证书"
+  value       = base64decode(google_container_cluster.primary.master_auth[0].client_certificate)
+  sensitive   = true
+}
+
+output "client_key" {
+  description = "GKE 客户端密钥"
+  value       = base64decode(google_container_cluster.primary.master_auth[0].client_key)
+  sensitive   = true
+}
+
 # Artifact Registry 输出
 output "artifact_registry_id" {
   description = "Artifact Registry 仓库 ID"
