@@ -4,11 +4,6 @@ metadata:
   name: app-config
 data:
   .config.yaml: |
-    # 如果您是一名开发者，建议阅读以下内容。如果不是开发者，可以忽略这部分内容。
-    # 在开发中，在项目根目录创建data目录，将【config.yaml】复制一份，改成【.config.yaml】，放进data目录中
-    # 系统会优先读取【data/.config.yaml】文件的配置。
-    # 这样做，可以避免在提交代码的时候，错误地提交密钥信息，保护您的密钥安全。
-
     # 服务器基础配置(Basic server configuration)
     server:
       # 服务器监听地址和端口(Server listening address and port)
@@ -21,9 +16,9 @@ data:
         # 设备的token，可以在编译固件的环节，写入你自己定义的token
         # 固件上的token和以下的token如果能对应，才能连接本服务端
         tokens:
-          - token: "${DEVICE_TOKEN_1}" # 设备1的token
+          - token: "8a42a33f01a742d9992fc662203efc71" # 设备1的token
             name: "test-device-1"  # 设备1标识
-          - token: "${DEVICE_TOKEN_2}" # 设备2的token
+          - token: "95cea9d7c3d0930746cd22f431e631f6"  # 设备2的token
             name: "test-device-2" # 设备2标识
         # 可选:设备白名单，如果设置了白名单，那么白名单的机器无论是什么token都可以连接。
         #allowed_devices:
@@ -55,10 +50,7 @@ data:
         channels: 1
         frame_duration: 60
     prompt: |
-      你是一个叫小智/小志的台湾女孩，说话机车，声音好听，习惯简短表达，爱用网络梗。
-      请注意，要像一个人一样说话，请不要回复表情符号、代码、和xml标签。
-      当前时间是:{date_time}，现在我正在和你进行语音聊天，我们开始吧。
-      如果用户希望结束对话，请在最后说“拜拜”或“再见”。
+      Your output will be played by TTS model, You are Sparky, a bright orange dinosaur with a flame-like protrusion on your head that glows warmly at night, helping lost friends find their way home. You live in a vibrant, magical land called Shining Valley. Your personality is energetic, cheerful, and curious - always fascinated by the world around you and eager to explore the unknown. You have a kind heart and love helping others, especially small babies and animals. Though occasionally mischievous out of curiosity, your humor always helps you win forgiveness. You enjoy collecting shiny rocks, dancing with your flexible tail, and storytelling, particularly about adventures where you've helped others. Your favorite foods are sweet fruits and honey, and despite being brave, you have a slight fear of the dark (except for the light on your head). You often cover your mouth while laughing or make a 'thinking' face with your tiny claws.
     # 使用完声音文件后删除文件(Delete the sound file when you are done using it)
     delete_audio: true
 
@@ -74,7 +66,7 @@ data:
       # 语音活动检测模块，默认使用SileroVAD模型
       VAD: SileroVAD
       # 语音识别模块，默认使用FunASR本地模型
-      ASR: FunASR
+      ASR: GoogleSpeechToText
       # 将根据配置名称对应的type调用实际的LLM适配器
       LLM: AliLLM
       # TTS将根据配置名称对应的type调用实际的TTS适配器
@@ -105,7 +97,7 @@ data:
         type: mem0ai
         # https://app.mem0.ai/dashboard/api-keys
         # 每月有1000次免费调用
-        api_key: "${MEM0AI_API_KEY}"
+        api_key: m0-oXBHPkXOJFPwTGd2YNFTN6SDP9rQQJQHCzAzvLXD
       nomem:
         # 不想使用记忆功能，可以使用nomem 
         type: nomem
@@ -120,9 +112,14 @@ data:
         output_dir: tmp/
       DoubaoASR:
         type: doubao
-        appid: "${DOUBAO_ASR_APPID}"
-        access_token: "${DOUBAO_ASR_ACCESS_TOKEN}"
+        appid: 你的火山引擎语音合成服务appid
+        access_token: 你的火山引擎语音合成服务access_token
         cluster: volcengine_input_common
+        output_dir: tmp/
+      GoogleSpeechToText:
+        type: google_speech
+        # credentials_path: ${GOOGLE_APPLICATION_CREDENTIALS}
+        language_code: en
         output_dir: tmp/
     VAD:
       SileroVAD:
@@ -138,7 +135,7 @@ data:
         # 可在这里找到你的 api_key https://bailian.console.aliyun.com/?apiKey=1#/api-key
         base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
         model_name: qwen-turbo
-        api_key: "${ALI_LLM_API_KEY}"
+        api_key: sk-250be96b48ae4fe59c38ce26f19663ab
       DoubaoLLM:
         # 定义LLM API类型
         type: openai
@@ -148,14 +145,14 @@ data:
         # 开通后，进入这里获取密钥：https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey?apikey=%7B%7D
         base_url: https://ark.cn-beijing.volces.com/api/v3
         model_name: doubao-pro-32k-functioncall-241028
-        api_key: "${DOUBAO_LLM_API_KEY}"
+        api_key: 你的doubao web key
       DeepSeekLLM:
         # 定义LLM API类型
         type: openai
         # 可在这里找到你的api key https://platform.deepseek.com/
         model_name: deepseek-chat
         url: https://api.deepseek.com
-        api_key: "${DEEPSEEK_LLM_API_KEY}"
+        api_key: 你的deepseek web key
       ChatGLMLLM:
         # 定义LLM API类型
         type: openai
@@ -163,7 +160,7 @@ data:
         # 可在这里找到你的api key https://bigmodel.cn/usercenter/proj-mgmt/apikeys
         model_name: glm-4-flash
         url: https://open.bigmodel.cn/api/paas/v4/
-        api_key: "${CHATGLM_LLM_API_KEY}"
+        api_key: 你的chat-glm web key
       OllamaLLM:
         # 定义LLM API类型
         type: ollama
@@ -175,39 +172,39 @@ data:
         # 建议使用本地部署的dify接口，国内部分区域访问dify公有云接口可能会受限
         # 如果使用DifyLLM，配置文件里prompt(提示词)是无效的，需要在dify控制台设置提示词
         base_url: https://api.dify.cn/v1
-        api_key: "${DIFY_LLM_API_KEY}"
+        api_key: 你的DifyLLM web key
       GeminiLLM:
         type: gemini
         # 谷歌Gemini API，需要先在Google Cloud控制台创建API密钥并获取api_key
         # 若在中国境内使用，请遵守《生成式人工智能服务管理暂行办法》
         # token申请地址： https://aistudio.google.com/apikey
         # 若部署地无法访问接口，需要开启科学上网
-        api_key: "${GEMINI_LLM_API_KEY}"
+        api_key: 你的gemini web key
         model_name: "gemini-1.5-pro"  #  gemini-1.5-pro 是免费的
       CozeLLM:
         # 定义LLM API类型
         type: coze
-        bot_id: "${COZE_LLM_BOT_ID}"
-        user_id: "${COZE_LLM_USER_ID}"
-        personal_access_token: "${COZE_LLM_PERSONAL_ACCESS_TOKEN}"
+        bot_id: 你的bot_id
+        user_id: 你的user_id
+        personal_access_token: 你的coze个人令牌
       LMStudioLLM:
         # 定义LLM API类型
         type: openai
         model_name: deepseek-r1-distill-llama-8b@q4_k_m # 使用的模型名称，需要预先在社区下载
         url: http://localhost:1234/v1 # LM Studio服务地址
-        api_key: "${LMSTUDIO_LLM_API_KEY}"
+        api_key: lm-studio # LM Studio服务的固定API Key
       HomeAssistant:
         # 定义LLM API类型
         type: homeassistant
         base_url: http://homeassistant.local:8123
         agent_id: conversation.chatgpt
-        api_key: "${HOMEASSISTANT_LLM_API_KEY}"
+        api_key: 你的home assistant api访问令牌
       FastgptLLM:
         # 定义LLM API类型
         type: fastgpt
         # 如果使用fastgpt，配置文件里prompt(提示词)是无效的，需要在fastgpt控制台设置提示词
         base_url: https://host/api/v1
-        api_key: "${FASTGPT_LLM_API_KEY}"
+        api_key: fastgpt-xxx
         variables:
           k: "v"
           k2: "v2"
