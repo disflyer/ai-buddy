@@ -390,8 +390,6 @@ data:
       ACGNTTS:
         #在线网址：https://acgn.ttson.cn/
         #token购买：www.ttson.cn
-        #开发相关疑问请提交至3497689533@qq.com
-        #角色id获取地址：ctrl+f快速检索角色——网站管理者不允许发布,可询问网站管理者：1069379506
         #各参数意义见开发文档：https://www.yuque.com/alexuh/skmti9/wm6taqislegb02gd?singleDoc#
         type: ttson
         token: your_token
