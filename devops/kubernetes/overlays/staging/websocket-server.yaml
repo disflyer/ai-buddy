@@ -136,7 +136,7 @@ spec:
             memory: 1Gi
       containers:
       - name: websocket-server
-        image: us-central1-docker.pkg.dev/rare-attic-453703-a8/shared-app-registry/ai-buddy/websocket-server:81146fe
+        image: us-central1-docker.pkg.dev/rare-attic-453703-a8/shared-app-registry/ai-buddy/websocket-server:5460eb8
         securityContext:
           runAsNonRoot: false
           allowPrivilegeEscalation: false

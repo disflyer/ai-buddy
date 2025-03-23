@@ -24,13 +24,13 @@ class ASRProvider(ASRProviderBase):
         # 从配置中获取必要参数
         self.credentials_path = config.get("credentials_path")
         
-        # 检查认证信息
-        if not self.credentials_path and not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            raise ValueError("Google Cloud credentials not found in config or environment")
-
-        # 如果配置中提供了认证文件路径，则设置环境变量
+        # 如果提供了认证文件路径，则设置环境变量
         if self.credentials_path:
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.credentials_path
+            logger.bind(tag=TAG).info(f"Using credentials file: {self.credentials_path}")
+        else:
+            # 在GKE Workload Identity环境中，会自动使用默认凭据
+            logger.bind(tag=TAG).info("No credentials file provided, using default authentication method (ADC or Workload Identity)")
 
         self.output_dir = config.get("output_dir", "tmp/")
         self.delete_audio_file = delete_audio_file
