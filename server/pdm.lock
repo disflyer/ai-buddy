@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:3c270ab3268f47f056cf3b5f4e3e4a46734d7b33f44ae6203e51937a8c830628"
+content_hash = "sha256:c6910272cf0705690d17ed3292d044ae47a0a4bb69eeadd0ea27a897a864db68"
 
 [[metadata.targets]]
 requires_python = "==3.11.*"
@@ -641,6 +641,24 @@ dependencies = [
 files = [
     {file = "google-auth-httplib2-0.2.0.tar.gz", hash = "sha256:38aa7badf48f974f1eb9861794e9c0cb2a0511a4ec0679b1f886d108f5640e05"},
     {file = "google_auth_httplib2-0.2.0-py2.py3-none-any.whl", hash = "sha256:b65a0a2123300dd71281a7bf6e64d65a0759287df52729bdd1ae2e47dc311a3d"},
+]
+
+[[package]]
+name = "google-cloud-speech"
+version = "2.31.1"
+requires_python = ">=3.7"
+summary = "Google Cloud Speech API client library"
+groups = ["default"]
+dependencies = [
+    "google-api-core[grpc]!=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0,>=1.34.1",
+    "google-auth!=2.24.0,!=2.25.0,<3.0.0,>=2.14.1",
+    "proto-plus<2.0.0,>=1.22.3",
+    "proto-plus<2.0.0,>=1.25.0; python_version >= \"3.13\"",
+    "protobuf!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<7.0.0,>=3.20.2",
+]
+files = [
+    {file = "google_cloud_speech-2.31.1-py3-none-any.whl", hash = "sha256:bb10defc51570881156893556ee3dc6a481f21ce39196ebd0b3e011dc61a6533"},
+    {file = "google_cloud_speech-2.31.1.tar.gz", hash = "sha256:fdf0d350c0647b566945402bd8aeef2b7afda67abb5206eb4db4ed41f923b40f"},
 ]
 
 [[package]]

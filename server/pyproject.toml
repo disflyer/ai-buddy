@@ -29,6 +29,7 @@ dependencies = [
     "mem0ai==0.1.62",
     "fastapi>=0.115.11",
     "uvicorn>=0.34.0",
+    "google-cloud-speech>=2.31.1",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
