@@ -1,7 +1,7 @@
 [project]
 name = "ai-buddy-frontend"
 version = "0.1.0"
-description = "小小花AI客户端"
+description = "AI客户端"
 authors = [
     {name = "Alan Fang", email = "disflyer123@gmail.com"},
 ]

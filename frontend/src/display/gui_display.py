@@ -19,7 +19,7 @@ class GuiDisplay(BaseDisplay):
 
         # 创建主窗口
         self.root = tk.Tk()
-        self.root.title("小小花Ai语音控制")
+        self.root.title("Ai语音控制")
         self.root.geometry("750x350")  # 增加高度以容纳快捷键提示
 
         # 状态显示
