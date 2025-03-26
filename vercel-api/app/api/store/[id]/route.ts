@@ -4,10 +4,10 @@ import { prisma } from "@/lib/prisma";
 // GET handler
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Record<string, string | string[]> }
 ) {
   try {
-    const { id } = params;
+    const id = params.id as string;
     const { searchParams } = new URL(request.url);
     const keys = searchParams.get("keys")?.split(",").filter(Boolean);
 
@@ -53,10 +53,10 @@ export async function GET(
 // PUT handler
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Record<string, string | string[]> }
 ) {
   try {
-    const { id } = params;
+    const id = params.id as string;
     const body = await request.json();
 
     const existingRecord = await prisma.jsonStore.findUnique({ where: { id } });
