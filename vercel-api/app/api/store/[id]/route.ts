@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+interface RouteHandlerContext {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
 // GET handler
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Record<string, string | string[]> }
-) {
+export async function GET(request: NextRequest, context: RouteHandlerContext) {
   try {
-    const id = params.id as string;
+    const { id } = await context.params;
     const { searchParams } = new URL(request.url);
     const keys = searchParams.get("keys")?.split(",").filter(Boolean);
 
@@ -51,12 +54,9 @@ export async function GET(
 }
 
 // PUT handler
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Record<string, string | string[]> }
-) {
+export async function PUT(request: NextRequest, context: RouteHandlerContext) {
   try {
-    const id = params.id as string;
+    const { id } = await context.params;
     const body = await request.json();
 
     const existingRecord = await prisma.jsonStore.findUnique({ where: { id } });
