@@ -1,0 +1,6 @@
+{
+  "buildCommand": "prisma generate && prisma db push && next build",
+  "env": {
+    "DATABASE_URL": "postgresql://user:password@host:port/dbname?schema=ai-buddy"
+  }
+} 
