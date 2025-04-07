@@ -1,18 +1,18 @@
 {
   "CLIENT_ID": "8f952b70-5bef-4aec-8504-4e2df6c1f8e2",
-  "DEVICE_ID": "4e:5d:48:92:5f:0a",
+  "DEVICE_ID": "4e:5d:48:92:5f:0b",
   "NETWORK": {
     "OTA_VERSION_URL": "https://api.tenclass.net/xiaozhi/ota/",
-    "WEBSOCKET_URL": "ws://localhost:8000/ws",
+    "WEBSOCKET_URL": "wss://api.tenclass.net/xiaozhi/v1/",
     "WEBSOCKET_ACCESS_TOKEN": "8a42a33f01a742d9992fc662203efc71"
   },
   "MQTT_INFO": {
-    "endpoint": "post-cn-apg3xckag01.mqtt.aliyuncs.com",
-    "client_id": "GID_test@@@4e_5d_48_92_5f_0a",
+    "endpoint": "mqtt.xiaozhi.me",
+    "client_id": "GID_test@@@4e_5d_48_92_5f_0b",
     "username": "Signature|LTAI5tF8J3CrdWmRiuTjxHbF|post-cn-apg3xckag01",
-    "password": "kznr4PMQmfmAgYHyzIL5qEAnvKw=",
+    "password": "UvG2kWKSJ5Ph4yZw7p//pPX6whE=",
     "publish_topic": "device-server",
-    "subscribe_topic": "devices/4e_5d_48_92_5f_0a"
+    "subscribe_topic": "devices/4e_5d_48_92_5f_0b"
   },
   "USE_WAKE_WORD": false,
   "WAKE_WORDS": [
