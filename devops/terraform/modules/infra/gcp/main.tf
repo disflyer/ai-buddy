@@ -173,7 +173,7 @@ resource "google_container_cluster" "primary" {
   
   # 删除默认节点池，使用单独管理的节点池
   remove_default_node_pool = true
-  initial_node_count       = 0  # 设置为0，避免创建默认节点池
+  initial_node_count       = 1  # 设置为0，避免创建默认节点池
   
   # 允许删除集群
   deletion_protection = false

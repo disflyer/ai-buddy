@@ -136,7 +136,7 @@ spec:
             memory: 1Gi
       containers:
       - name: websocket-server
-        image: us-central1-docker.pkg.dev/rare-attic-453703-a8/shared-app-registry/ai-buddy/websocket-server:bc3a746
+        image: us-central1-docker.pkg.dev/rare-attic-453703-a8/shared-app-registry/ai-buddy/websocket-server:latest
         securityContext:
           runAsNonRoot: false
           allowPrivilegeEscalation: false
@@ -151,8 +151,8 @@ spec:
           protocol: TCP
         resources:
           limits:
-            cpu: "4"
-            memory: 8Gi
+            cpu: "2"
+            memory: 4Gi
             nvidia.com/gpu: 0
           requests:
             cpu: 500m
