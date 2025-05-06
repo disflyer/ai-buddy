@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # 前端URL
     FRONTEND_URL: AnyHttpUrl
     
+    # Google Maps API Key
+    GOOGLE_MAPS_API_KEY: str
+    
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 # 创建全局配置实例
