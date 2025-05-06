@@ -10,7 +10,7 @@ from src.services.user import UserService
 from src.models.user import User
 from src.schemas.user import TokenPayload
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],

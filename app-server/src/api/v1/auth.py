@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -60,9 +60,11 @@ async def login(
             detail="用户未激活"
         )
     
-    # 创建访问令牌
+    # 创建访问令牌，加入 exp 字段
+    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {"sub": user.id, "exp": int(expire.timestamp())}
     access_token = jwt.encode(
-        {"sub": user.id},
+        to_encode,
         settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM
     )
