@@ -1,14 +1,16 @@
 from typing import Annotated
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
+from firebase_admin import auth as firebase_auth
 
 from src.core.config import settings
 from src.core.database import get_db
 from src.services.user import UserService
 from src.models.user import User
 from src.schemas.user import TokenPayload
+from src.core import firebase  # 确保初始化
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -62,4 +64,15 @@ async def get_current_verified_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户邮箱未验证"
         )
-    return current_user 
+    return current_user
+
+async def get_firebase_user(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="缺少或无效的认证信息")
+    token = auth_header.split(" ")[1]
+    try:
+        decoded_token = firebase_auth.verify_id_token(token)
+        return decoded_token  # 你可以返回 uid 或整个 token
+    except Exception:
+        raise HTTPException(status_code=401, detail="无效的 Firebase Token") 
