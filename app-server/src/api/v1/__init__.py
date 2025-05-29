@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 
-from src.api.v1 import users
 from .children import router as children_router
 from .buddies import router as buddies_router
 from .usages import router as usages_router
@@ -9,13 +8,6 @@ from .resources import router as resources_router
 from .analysis import router as analysis_router
 
 api_router = APIRouter()
-
-# 注册用户相关路由
-api_router.include_router(
-    users.router,
-    prefix="/users",
-    tags=["users"]
-)
 
 api_router.include_router(children_router, prefix="/children", tags=["children"])
 api_router.include_router(buddies_router, prefix="/buddies", tags=["buddies"])
