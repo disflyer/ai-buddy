@@ -32,4 +32,10 @@ class DialogueOut(DialogueBase):
     timestamp: datetime
 
     class Config:
-        orm_mode = True 
+        orm_mode = True
+
+class DialogueUpsert(DialogueBase):
+    """
+    创建或更新对话历史（upsert）
+    """
+    id: Optional[str] = None 

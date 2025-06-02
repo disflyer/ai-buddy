@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
-from src.schemas.dialogue import DialogueCreate, DialogueUpdate, DialogueOut
+from src.schemas.dialogue import DialogueCreate, DialogueUpdate, DialogueOut, DialogueUpsert
 from src.services.dialogue import DialogueService
 from src.core.database import get_db
 from src.api.deps import get_firebase_user
@@ -10,8 +10,16 @@ from src.models.user import User as UserModel
 router = APIRouter()
 
 @router.post("/", response_model=DialogueOut)
-async def create_dialogue(dialogue_in: DialogueCreate, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
+async def upsert_dialogue(dialogue_in: DialogueUpsert, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
+    """
+    创建或更新对话历史（upsert）。
+    如果 dialogue_in.id 存在且数据库有记录，则更新，否则创建。
+    """
     service = DialogueService(db)
+    if dialogue_in.id:
+        dialogue = await service.update(dialogue_in.id, dialogue_in)
+        if dialogue:
+            return dialogue
     return await service.create(dialogue_in)
 
 @router.get("/", response_model=List[DialogueOut])
@@ -28,14 +36,6 @@ async def list_dialogues(
 async def get_dialogue(dialogue_id: str, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
     service = DialogueService(db)
     dialogue = await service.get(dialogue_id)
-    if not dialogue:
-        raise HTTPException(404, "Dialogue not found")
-    return dialogue
-
-@router.put("/{dialogue_id}", response_model=DialogueOut)
-async def update_dialogue(dialogue_id: str, dialogue_in: DialogueUpdate, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
-    service = DialogueService(db)
-    dialogue = await service.update(dialogue_id, dialogue_in)
     if not dialogue:
         raise HTTPException(404, "Dialogue not found")
     return dialogue

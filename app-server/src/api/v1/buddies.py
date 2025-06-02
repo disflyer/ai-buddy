@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from src.schemas.buddy import BuddyCreate, BuddyUpdate, BuddyOut
+from src.schemas.buddy import BuddyCreate, BuddyUpdate, BuddyOut, BuddyUpsert
 from src.services.buddy import BuddyService
 from src.core.database import get_db
 from src.api.deps import get_firebase_user
@@ -10,8 +10,16 @@ from src.models.user import User as UserModel
 router = APIRouter()
 
 @router.post("/", response_model=BuddyOut)
-async def create_buddy(buddy_in: BuddyCreate, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
+async def upsert_buddy(buddy_in: BuddyUpsert, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
+    """
+    创建或更新玩偶（upsert）。
+    如果 buddy_in.id 存在且数据库有记录，则更新，否则创建。
+    """
     service = BuddyService(db)
+    if buddy_in.id:
+        buddy = await service.update(buddy_in.id, buddy_in)
+        if buddy:
+            return buddy
     return await service.create(buddy_in)
 
 @router.get("/", response_model=List[BuddyOut])
@@ -23,14 +31,6 @@ async def list_buddies(db: AsyncSession = Depends(get_db), firebase_user=Depends
 async def get_buddy(buddy_id: str, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
     service = BuddyService(db)
     buddy = await service.get(buddy_id)
-    if not buddy:
-        raise HTTPException(404, "Buddy not found")
-    return buddy
-
-@router.put("/{buddy_id}", response_model=BuddyOut)
-async def update_buddy(buddy_id: str, buddy_in: BuddyUpdate, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
-    service = BuddyService(db)
-    buddy = await service.update(buddy_id, buddy_in)
     if not buddy:
         raise HTTPException(404, "Buddy not found")
     return buddy

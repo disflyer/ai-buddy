@@ -37,4 +37,10 @@ class ChildOut(ChildBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True 
+        orm_mode = True
+
+class ChildUpsert(ChildBase):
+    """
+    创建或更新孩童（upsert）
+    """
+    id: Optional[str] = None 

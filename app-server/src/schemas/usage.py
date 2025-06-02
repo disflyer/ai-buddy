@@ -33,4 +33,10 @@ class UsageOut(UsageBase):
     timestamp: datetime
 
     class Config:
-        orm_mode = True 
+        orm_mode = True
+
+class UsageUpsert(UsageBase):
+    """
+    创建或更新使用时长（upsert）
+    """
+    id: Optional[str] = None 

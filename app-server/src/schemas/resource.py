@@ -34,4 +34,10 @@ class ResourceOut(ResourceBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True 
+        orm_mode = True
+
+class ResourceUpsert(ResourceBase):
+    """
+    创建或更新资源（upsert）
+    """
+    id: Optional[str] = None 

@@ -39,4 +39,10 @@ class BuddyOut(BuddyBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True 
+        orm_mode = True
+
+class BuddyUpsert(BuddyBase):
+    """
+    创建或更新玩偶（upsert）
+    """
+    id: Optional[str] = None 
