@@ -9,7 +9,7 @@ from src.models.user import User as UserModel
 
 router = APIRouter()
 
-@router.post("/", response_model=BuddyOut)
+@router.post("/create", response_model=BuddyOut)
 async def upsert_buddy(buddy_in: BuddyUpsert, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
     """
     创建或更新玩偶（upsert）。
@@ -22,7 +22,7 @@ async def upsert_buddy(buddy_in: BuddyUpsert, db: AsyncSession = Depends(get_db)
             return buddy
     return await service.create(buddy_in)
 
-@router.get("/", response_model=List[BuddyOut])
+@router.get("/list", response_model=List[BuddyOut])
 async def list_buddies(db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
     service = BuddyService(db)
     return await service.get_multi()

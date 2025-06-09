@@ -9,7 +9,7 @@ from src.models.user import User as UserModel
 
 router = APIRouter()
 
-@router.post("/", response_model=ResourceOut)
+@router.post("/create", response_model=ResourceOut)
 async def upsert_resource(resource_in: ResourceUpsert, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
     """
     创建或更新资源（upsert）。
@@ -22,7 +22,7 @@ async def upsert_resource(resource_in: ResourceUpsert, db: AsyncSession = Depend
             return resource
     return await service.create(resource_in)
 
-@router.get("/", response_model=List[ResourceOut])
+@router.get("/list", response_model=List[ResourceOut])
 async def list_resources(
     type: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),

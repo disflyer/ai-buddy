@@ -9,10 +9,10 @@ from src.models.user import User as UserModel
 
 router = APIRouter()
 
-@router.post("/", response_model=DialogueOut)
+@router.post("/create", response_model=DialogueOut)
 async def upsert_dialogue(dialogue_in: DialogueUpsert, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
     """
-    创建或更新对话历史（upsert）。
+    创建或更新对话（upsert）。
     如果 dialogue_in.id 存在且数据库有记录，则更新，否则创建。
     """
     service = DialogueService(db)
@@ -22,7 +22,7 @@ async def upsert_dialogue(dialogue_in: DialogueUpsert, db: AsyncSession = Depend
             return dialogue
     return await service.create(dialogue_in)
 
-@router.get("/", response_model=List[DialogueOut])
+@router.get("/list", response_model=List[DialogueOut])
 async def list_dialogues(
     child_id: Optional[str] = Query(None),
     buddy_id: Optional[str] = Query(None),

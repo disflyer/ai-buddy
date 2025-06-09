@@ -9,7 +9,7 @@ from src.models.user import User as UserModel
 
 router = APIRouter()
 
-@router.post("/", response_model=UsageOut)
+@router.post("/create", response_model=UsageOut)
 async def upsert_usage(usage_in: UsageUpsert, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
     """
     创建或更新使用时长（upsert）。
@@ -22,15 +22,15 @@ async def upsert_usage(usage_in: UsageUpsert, db: AsyncSession = Depends(get_db)
             return usage
     return await service.create(usage_in)
 
-@router.get("/", response_model=List[UsageOut])
+@router.get("/list", response_model=List[UsageOut])
 async def list_usages(
     child_id: Optional[str] = Query(None),
-    type: Optional[str] = Query(None),
+    buddy_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     firebase_user=Depends(get_firebase_user)
 ):
     service = UsageService(db)
-    return await service.get_multi(child_id=child_id, type=type)
+    return await service.get_multi(child_id=child_id, buddy_id=buddy_id)
 
 @router.get("/{usage_id}", response_model=UsageOut)
 async def get_usage(usage_id: str, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):

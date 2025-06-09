@@ -9,7 +9,7 @@ from src.models.user import User as UserModel
 
 router = APIRouter()
 
-@router.post("/", response_model=ChildOut)
+@router.post("/create", response_model=ChildOut)
 async def upsert_child(child_in: ChildUpsert, db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
     """
     创建或更新孩童（upsert）。
@@ -22,7 +22,7 @@ async def upsert_child(child_in: ChildUpsert, db: AsyncSession = Depends(get_db)
             return child
     return await service.create(child_in)
 
-@router.get("/", response_model=List[ChildOut])
+@router.get("/list", response_model=List[ChildOut])
 async def list_children(db: AsyncSession = Depends(get_db), firebase_user=Depends(get_firebase_user)):
     service = ChildService(db)
     return await service.get_multi()
