@@ -12,7 +12,7 @@ AVATAR_PATH = "avatar/"
 # 可选：从环境变量读取GCP密钥路径
 # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/path/to/your/service-account.json"
 
-@router.post("/upload/avatar")
+@router.post("/avatar")
 async def upload_avatar(
     file: UploadFile = File(...),
     firebase_user=Depends(get_firebase_user)
