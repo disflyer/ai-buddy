@@ -31,10 +31,16 @@ async def upload_avatar(
         bucket = storage_client.bucket(BUCKET_NAME)
         blob = bucket.blob(blob_path)
         blob.upload_from_file(file.file, content_type=file.content_type)
-        # 设置为公开可读
-        blob.make_public()
-        public_url = blob.public_url
+        
+        # 对于启用了统一存储桶级别访问的存储桶，直接生成公共URL
+        # 不需要调用 make_public()，因为权限在存储桶级别管理
+        public_url = f"https://storage.googleapis.com/{BUCKET_NAME}/{blob_path}"
+        
+        # 注意: 确保存储桶已配置为允许公共读取访问
+        # 可通过 Google Cloud Console 设置或运行以下命令:
+        # gcloud storage buckets add-iam-policy-binding gs://tinybuddy --member="allUsers" --role="roles/storage.objectViewer"
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"上传失败: {e}")
+        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
 
     return {"avatar_url": public_url, "avatar_path": blob_path} 
