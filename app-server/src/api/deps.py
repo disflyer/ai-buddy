@@ -72,7 +72,16 @@ async def get_firebase_user(request: Request):
         raise HTTPException(status_code=401, detail="缺少或无效的认证信息")
     token = auth_header.split(" ")[1]
     try:
+        # 验证 Firebase ID Token
         decoded_token = firebase_auth.verify_id_token(token)
-        return decoded_token  # 你可以返回 uid 或整个 token
-    except Exception:
-        raise HTTPException(status_code=401, detail="无效的 Firebase Token") 
+        print(f"Firebase user authenticated: {decoded_token.get('uid')}")
+        return decoded_token
+    except firebase_auth.InvalidIdTokenError as e:
+        print(f"无效的 Firebase Token: {e}")
+        raise HTTPException(status_code=401, detail="无效的 Firebase Token")
+    except firebase_auth.ExpiredIdTokenError as e:
+        print(f"Firebase Token 已过期: {e}")
+        raise HTTPException(status_code=401, detail="Firebase Token 已过期")
+    except Exception as e:
+        print(f"Firebase Token 验证失败: {e}")
+        raise HTTPException(status_code=401, detail="Firebase Token 验证失败") 
