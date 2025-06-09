@@ -1,5 +1,10 @@
 import asyncio
+import sys
+import os
 from logging.config import fileConfig
+
+# 添加项目根目录到 Python 路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -8,7 +13,13 @@ from alembic import context
 
 from src.core.config import settings
 from src.core.database import Base
-from src.models.user import User  # 导入所有模型
+# 导入所有模型以便 Alembic 检测
+from src.models.user import User
+from src.models.child import Child
+from src.models.buddy import Buddy
+from src.models.dialogue import Dialogue
+from src.models.usage import Usage
+from src.models.resource import Resource
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
