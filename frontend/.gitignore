@@ -1,7 +1,0 @@
-dist/
-build/
-*.spec
-*.pyc
-*.pyo
-*.pyd
-*.pyw
