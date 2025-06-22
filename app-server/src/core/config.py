@@ -10,12 +10,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """应用配置类"""
-    
+
     # 应用配置
     APP_NAME: str
     ENVIRONMENT: str
     DEBUG: bool = False
-    
+
     # 数据库配置
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     def assemble_db_connection(cls, v: str | None, info: ValidationInfo) -> Any:
         if isinstance(v, str):
             return v
-        
+
         values = info.data
         return PostgresDsn.build(
             scheme="postgresql+asyncpg",
@@ -43,16 +43,21 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
+
     # 邮件配置
     EMAILS_FROM_NAME: str
     EMAILS_FROM_EMAIL: EmailStr
     RESEND_API_KEY: str
-    
+
     # 前端URL
     FRONTEND_URL: AnyHttpUrl
-    
+
+    # TINY BUDDY MANAGER配置
+    TINY_BUDDY_MANAGER_TOKEN: str
+    AGENT_ID: str = "default_agent"
+    DEVICE_URL: str = "http://127.0.0.1:8002/tinybuddy/device/bind/{agent_id}/{device_code}"
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 # 创建全局配置实例
-settings = Settings() 
+settings = Settings()

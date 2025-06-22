@@ -7,6 +7,7 @@ from .dialogues import router as dialogues_router
 from .resources import router as resources_router
 from .analysis import router as analysis_router
 from .upload import router as upload_router
+from .devices import router as devices_router
 
 api_router = APIRouter()
 
@@ -16,4 +17,5 @@ api_router.include_router(usages_router, prefix="/usages", tags=["usages"])
 api_router.include_router(dialogues_router, prefix="/dialogues", tags=["dialogues"])
 api_router.include_router(resources_router, prefix="/resources", tags=["resources"])
 api_router.include_router(analysis_router, prefix="/analysis", tags=["analysis"])
-api_router.include_router(upload_router, prefix="/upload", tags=["upload"]) 
+api_router.include_router(upload_router, prefix="/upload", tags=["upload"])
+api_router.include_router(devices_router, prefix="/devices", tags=["devices"])
