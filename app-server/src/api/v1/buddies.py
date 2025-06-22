@@ -57,4 +57,4 @@ async def unbind_buddy(buddy_id: str, db: AsyncSession = Depends(get_db), curren
     buddy = await service.unbind(buddy_id)
     if not buddy:
         raise HTTPException(404, "Buddy not found")
-    return buddy 
+    return buddy
