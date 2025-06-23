@@ -9,7 +9,7 @@ router = APIRouter()
 @router.post("/bind", response_model=DeviceOut)
 async def bind_device(
     device_in: DeviceIn,
-    # firebase_user=Depends(get_firebase_user)
+    firebase_user=Depends(get_firebase_user)
 ):
     """
     根据验证码绑定设备
